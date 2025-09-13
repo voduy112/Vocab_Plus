@@ -70,3 +70,9 @@ firebase_options.dart
 /windows/build/
 /linux/build/
 /macos/build/
+
+# Generated files
+ios/Runner/GeneratedPluginRegistrant.swift
+windows/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugins.cmake
+macos/Flutter/GeneratedPluginRegistrant.swift
