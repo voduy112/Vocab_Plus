@@ -43,3 +43,30 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase config files (IMPORTANT: Contains sensitive data)
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+
+# IDE files
+.vscode/
+*.code-workspace
+.idea/
+*.iml
+
+# Platform specific build files
+/android/.gradle/
+/android/captures/
+/android/local.properties
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/flutter_export_environment.sh
+
+# Additional build outputs
+/android/app/build/
+/ios/build/
+/windows/build/
+/linux/build/
+/macos/build/
