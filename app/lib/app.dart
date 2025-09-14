@@ -21,7 +21,7 @@ class App extends StatelessWidget {
               useMaterial3: true,
               scaffoldBackgroundColor: Colors.white,
               colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.blue,
+                seedColor: Colors.blue.shade400,
                 brightness: Brightness.light,
                 background: Colors.white,
                 surface: Colors.white,

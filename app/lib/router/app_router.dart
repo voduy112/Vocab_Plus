@@ -8,6 +8,7 @@ import '../../features/profile/views/profile_screen.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/tab_page_view.dart';
 import '../../core/widgets/custom_bottom_nav.dart';
+import '../../core/widgets/ai_chat_button.dart';
 
 GoRouter createRouter(AuthController auth) {
   return GoRouter(
@@ -18,17 +19,27 @@ GoRouter createRouter(AuthController auth) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return Scaffold(
-            body: TabPageView(
-              currentIndex: navigationShell.currentIndex,
-              onPageChanged: (index) {
-                navigationShell.goBranch(index);
-              },
-            ),
-            bottomNavigationBar: CustomBottomNav(
-              selectedIndex: navigationShell.currentIndex,
-              onTap: (index) {
-                navigationShell.goBranch(index);
-              },
+            body: Stack(
+              children: [
+                TabPageView(
+                  currentIndex: navigationShell.currentIndex,
+                  onPageChanged: (index) {
+                    navigationShell.goBranch(index);
+                  },
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: CustomBottomNav(
+                    selectedIndex: navigationShell.currentIndex,
+                    onTap: (index) {
+                      navigationShell.goBranch(index);
+                    },
+                  ),
+                ),
+                const AiChatButton(),
+              ],
             ),
           );
         },

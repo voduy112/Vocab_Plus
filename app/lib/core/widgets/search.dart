@@ -14,7 +14,7 @@ class Search extends StatelessWidget {
             borderSide: BorderSide(color: Colors.blue.shade200),
             gapPadding: 10,
           ),
-          fillColor: Colors.grey.shade100,
+          fillColor: Colors.white,
         ),
       );
 }

@@ -45,10 +45,22 @@ class _CustomBottomNavState extends State<CustomBottomNav>
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+      margin: const EdgeInsets.only(bottom: 30, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 5),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -80,21 +92,28 @@ class _CustomBottomNavState extends State<CustomBottomNav>
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 16 : 12,
-          vertical: isSelected ? 12 : 8,
+          horizontal: isSelected ? 30 : 12,
+          vertical: isSelected ? 11 : 8,
         ),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  colors: [
-                    Colors.blue.shade400,
-                    Colors.purple.shade400,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
           borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.blue.shade400.withOpacity(0.6),
+                    blurRadius: 15,
+                    offset: const Offset(-4, 2),
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: Colors.pink.shade300.withOpacity(0.6),
+                    blurRadius: 15,
+                    offset: const Offset(4, 2),
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -102,23 +121,49 @@ class _CustomBottomNavState extends State<CustomBottomNav>
             AnimatedScale(
               scale: isSelected ? 1.1 : 1.0,
               duration: const Duration(milliseconds: 200),
-              child: Icon(
-                isSelected ? selectedIcon : icon,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
-                size: 24,
-              ),
+              child: isSelected
+                  ? ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [
+                          Colors.blue.shade400,
+                          Colors.pink.shade200,
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ).createShader(bounds),
+                      child: Icon(
+                        selectedIcon,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: Colors.grey.shade600,
+                      size: 24,
+                    ),
             ),
             if (isSelected) ...[
               const SizedBox(width: 8),
               AnimatedOpacity(
                 opacity: isSelected ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                child: ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [
+                      Colors.blue.shade400,
+                      Colors.pink.shade200,
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ).createShader(bounds),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
