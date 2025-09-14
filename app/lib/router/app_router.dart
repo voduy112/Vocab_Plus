@@ -6,26 +6,29 @@ import '../../features/home/views/home_screen.dart';
 import '../../features/desks/views/desk_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/widgets/tab_page_view.dart';
+import '../../core/widgets/custom_bottom_nav.dart';
 
 GoRouter createRouter(AuthController auth) {
   return GoRouter(
-    initialLocation: '/tabs/main',
+    initialLocation:
+        '/tabs/main', // Có thể thay đổi thành '/tabs/desks' hoặc '/tabs/profile'
+    debugLogDiagnostics: true, // Hiển thị log navigation để debug
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return Scaffold(
-            body: navigationShell,
-            bottomNavigationBar: NavigationBar(
+            body: TabPageView(
+              currentIndex: navigationShell.currentIndex,
+              onPageChanged: (index) {
+                navigationShell.goBranch(index);
+              },
+            ),
+            bottomNavigationBar: CustomBottomNav(
               selectedIndex: navigationShell.currentIndex,
-              onDestinationSelected: navigationShell.goBranch,
-              destinations: const [
-                NavigationDestination(
-                    icon: Icon(Icons.home_outlined), label: 'Home'),
-                NavigationDestination(
-                    icon: Icon(Icons.folder_outlined), label: 'Desks'),
-                NavigationDestination(
-                    icon: Icon(Icons.person_outline), label: 'Profile'),
-              ],
+              onTap: (index) {
+                navigationShell.goBranch(index);
+              },
             ),
           );
         },
@@ -43,7 +46,7 @@ GoRouter createRouter(AuthController auth) {
             GoRoute(
               path: '/tabs/desks',
               pageBuilder: (c, s) =>
-                  const NoTransitionPage(child: DeskScreen()),
+                  const NoTransitionPage(child: DesksScreen()),
             ),
           ]),
           // Tab 3: Profile/Login

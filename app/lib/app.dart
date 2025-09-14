@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/auth_controller.dart';
+import 'core/widgets/animated_splash_screen.dart';
 import 'router/app_router.dart';
 
 class App extends StatelessWidget {
@@ -16,7 +17,17 @@ class App extends StatelessWidget {
           return MaterialApp.router(
             debugShowCheckedModeBanner: false,
             routerConfig: router,
-            theme: ThemeData(useMaterial3: true),
+            theme: ThemeData(
+              useMaterial3: true,
+              scaffoldBackgroundColor: Colors.white,
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.blue,
+                brightness: Brightness.light,
+                background: Colors.white,
+                surface: Colors.white,
+              ),
+            ),
+            themeMode: ThemeMode.light,
           );
         },
       ),

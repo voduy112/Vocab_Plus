@@ -76,3 +76,42 @@ ios/Runner/GeneratedPluginRegistrant.swift
 windows/flutter/generated_plugin_registrant.cc
 linux/flutter/generated_plugins.cmake
 macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Build artifacts and generated files
+app/android/app/build/
+app/ios/build/
+app/windows/build/
+app/linux/build/
+app/macos/build/
+
+# Generated plugin files
+app/macos/Flutter/GeneratedPluginRegistrant.swift
+app/windows/flutter/generated_plugin_registrant.cc
+app/windows/flutter/generated_plugins.cmake
+
+# Lock files (optional - some teams prefer to commit these)
+app/pubspec.lock
+
+# Firebase config (if contains sensitive data)
+app/firebase.json
+
+# Launch screen assets (if auto-generated)
+app/android/app/src/main/res/drawable-v21/launch_background.xml
+app/android/app/src/main/res/drawable/launch_background.xml
+app/android/app/src/main/res/values-night/styles.xml
+app/android/app/src/main/res/values/styles.xml
+app/ios/Runner/Assets.xcassets/LaunchImage.imageset/
+app/ios/Runner/Base.lproj/LaunchScreen.storyboard
+app/ios/Runner/Info.plist
+
+# Background assets (if auto-generated)
+app/android/app/src/main/res/drawable-v21/background.png
+app/android/app/src/main/res/drawable/background.png
+app/ios/Runner/Assets.xcassets/LaunchBackground.imageset/
+
+# Auto-generated resource directories
+app/android/app/src/main/res/values-night-v31/
+app/android/app/src/main/res/values-v31/
+
+# Core assets (if auto-generated)
+app/lib/core/assets/
