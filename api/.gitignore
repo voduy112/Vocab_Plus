@@ -151,3 +151,9 @@ firebase-debug.log
 
 # Local development
 .local/
+
+# .env file
+.env
+
+# Firebase config
+firebase-service-account.json
