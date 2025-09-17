@@ -43,6 +43,9 @@ dependencies:
   flutter_native_splash: ^2.4.4
   font_awesome_flutter: ^10.7.0
   lottie: ^3.1.2
+  path_provider: ^2.1.5
+  sqflite: ^2.3.3+1
+  path: ^1.9.0
 
 dev_dependencies:
   flutter_test:
