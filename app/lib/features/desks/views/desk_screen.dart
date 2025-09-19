@@ -1,14 +1,24 @@
 // features/desks/desks_screen.dart
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../core/models/desk.dart';
 import '../../../core/services/database_service.dart';
+import '../../../core/widgets/app_button.dart';
 import 'desk_detail_screen.dart';
+import '../widgets/create_desk_dialog.dart';
 
 class DesksScreen extends StatefulWidget {
   const DesksScreen({super.key});
 
   @override
   State<DesksScreen> createState() => _DesksScreenState();
+}
+
+enum DeskSortOption {
+  nameAsc,
+  nameDesc,
+  dateAsc,
+  dateDesc,
 }
 
 class _DesksScreenState extends State<DesksScreen> {
@@ -19,6 +29,7 @@ class _DesksScreenState extends State<DesksScreen> {
   List<Desk> _filteredDesks = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  DeskSortOption _sortOption = DeskSortOption.nameAsc;
 
   @override
   void initState() {
@@ -41,6 +52,7 @@ class _DesksScreenState extends State<DesksScreen> {
         _filteredDesks = desks;
         _isLoading = false;
       });
+      _sortDesks();
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
@@ -58,29 +70,60 @@ class _DesksScreenState extends State<DesksScreen> {
         _filteredDesks = _desks;
       } else {
         _filteredDesks = _desks
-            .where((desk) =>
-                desk.name.toLowerCase().contains(query.toLowerCase()) ||
-                (desk.description
-                        ?.toLowerCase()
-                        .contains(query.toLowerCase()) ??
-                    false))
+            .where(
+                (desk) => desk.name.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
+      _sortDesks();
     });
+  }
+
+  void _sortDesks() {
+    setState(() {
+      _filteredDesks.sort((a, b) {
+        switch (_sortOption) {
+          case DeskSortOption.nameAsc:
+            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          case DeskSortOption.nameDesc:
+            return b.name.toLowerCase().compareTo(a.name.toLowerCase());
+          case DeskSortOption.dateAsc:
+            return a.createdAt.compareTo(b.createdAt);
+          case DeskSortOption.dateDesc:
+            return b.createdAt.compareTo(a.createdAt);
+        }
+      });
+    });
+  }
+
+  // Dropdown removed; keep for potential future use
+
+  void _toggleNameSort() {
+    setState(() {
+      _sortOption = _sortOption == DeskSortOption.nameAsc
+          ? DeskSortOption.nameDesc
+          : DeskSortOption.nameAsc;
+    });
+    _sortDesks();
+  }
+
+  IconData _faSortIcon() {
+    return _sortOption == DeskSortOption.nameAsc
+        ? FontAwesomeIcons.arrowUpAZ
+        : FontAwesomeIcons.arrowDownAZ;
   }
 
   Future<void> _createNewDesk() async {
     final result = await showDialog<Map<String, String?>>(
       context: context,
-      builder: (context) => const _CreateDeskDialog(),
+      builder: (context) => const CreateDeskDialog(),
     );
+    print("result: $result");
 
     if (result != null) {
       try {
         final now = DateTime.now();
         final desk = Desk(
           name: result['name']!,
-          description: result['description'],
           color: result['color'] ?? '#2196F3',
           createdAt: now,
           updatedAt: now,
@@ -88,12 +131,6 @@ class _DesksScreenState extends State<DesksScreen> {
 
         await _databaseService.createDesk(desk);
         await _loadDesks();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tạo desk thành công!')),
-          );
-        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -120,18 +157,35 @@ class _DesksScreenState extends State<DesksScreen> {
             controller: _searchController,
             onChanged: _filterDesks,
             decoration: InputDecoration(
-              hintText: 'Tìm kiếm desk...',
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              hintText: 'Search...',
               prefixIcon: const Icon(Icons.search),
               filled: true,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide(color: Colors.blue.shade200),
+                gapPadding: 10,
+              ),
+              fillColor: Colors.white,
             ),
           ),
           const SizedBox(height: 12),
-          FilledButton.icon(
-              onPressed: _createNewDesk,
-              icon: const Icon(Icons.add),
-              label: const Text('Tạo desk mới')),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppButton(
+                  onPressed: _createNewDesk,
+                  label: 'Tạo desk mới',
+                  icon: Icons.add,
+                  variant: AppButtonVariant.outlined),
+              const SizedBox(width: 12),
+              AppButton(
+                  onPressed: _toggleNameSort,
+                  label: 'Sắp xếp',
+                  icon: _faSortIcon(),
+                  variant: AppButtonVariant.text),
+            ],
+          ),
           const SizedBox(height: 16),
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
@@ -203,12 +257,6 @@ class _DesksScreenState extends State<DesksScreen> {
       try {
         await _databaseService.deleteDesk(desk.id!);
         await _loadDesks();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Xóa desk thành công!')),
-          );
-        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -257,10 +305,7 @@ class _DeskTile extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (desk.description != null) ...[
-              Text(desk.description!),
-              const SizedBox(height: 4),
-            ],
+            // Description removed from model
             FutureBuilder<Map<String, dynamic>>(
               future: DatabaseService().getDeskStats(desk.id!),
               builder: (context, snapshot) {
@@ -295,122 +340,6 @@ class _DeskTile extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CreateDeskDialog extends StatefulWidget {
-  const _CreateDeskDialog();
-
-  @override
-  State<_CreateDeskDialog> createState() => _CreateDeskDialogState();
-}
-
-class _CreateDeskDialogState extends State<_CreateDeskDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  String _selectedColor = '#2196F3';
-
-  final List<String> _colors = [
-    '#2196F3', // Blue
-    '#4CAF50', // Green
-    '#FF9800', // Orange
-    '#F44336', // Red
-    '#9C27B0', // Purple
-    '#00BCD4', // Cyan
-    '#FFC107', // Amber
-    '#795548', // Brown
-  ];
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Tạo desk mới'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Tên desk',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Vui lòng nhập tên desk';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Mô tả (tùy chọn)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-            const Text('Chọn màu:'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: _colors.map((color) {
-                final isSelected = _selectedColor == color;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedColor = color),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Color(int.parse(color.replaceFirst('#', '0xFF'))),
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? Border.all(color: Colors.black, width: 3)
-                          : null,
-                    ),
-                    child: isSelected
-                        ? const Icon(Icons.check, color: Colors.white, size: 20)
-                        : null,
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Hủy'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              final result = <String, String?>{
-                'name': _nameController.text.trim(),
-                'description': _descriptionController.text.trim().isEmpty
-                    ? null
-                    : _descriptionController.text.trim(),
-                'color': _selectedColor,
-              };
-              Navigator.of(context).pop(result);
-            }
-          },
-          child: const Text('Tạo'),
-        ),
-      ],
     );
   }
 }
