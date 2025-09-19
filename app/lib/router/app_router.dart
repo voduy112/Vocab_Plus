@@ -1,7 +1,6 @@
 // core/router/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import '../../features/home/views/home_screen.dart';
 import '../../features/desks/views/desk_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
