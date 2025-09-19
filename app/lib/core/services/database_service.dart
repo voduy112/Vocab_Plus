@@ -66,22 +66,6 @@ class DatabaseService {
   Future<void> closeDatabase() => _databaseHelper.close();
   Future<void> deleteDatabase() => _databaseHelper.deleteDatabase();
 
-  // Helper method để tạo desk với từ vựng mẫu
-  Future<int> createDeskWithSampleData(String name, String description,
-      {String color = '#2196F3'}) async {
-    final now = DateTime.now();
-    final desk = Desk(
-      name: name,
-      description: description,
-      color: color,
-      createdAt: now,
-      updatedAt: now,
-    );
-
-    final deskId = await createDesk(desk);
-    return deskId;
-  }
-
   // Helper method để tính toán thời gian ôn tập tiếp theo
   DateTime calculateNextReview(int currentMasteryLevel,
       {bool isCorrect = true}) {
