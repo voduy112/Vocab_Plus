@@ -3,7 +3,7 @@ import '../../../core/models/desk.dart';
 import '../../../core/models/vocabulary.dart';
 import '../../../core/services/database_service.dart';
 import '../widgets/stat_card.dart';
-import 'study_session_screen.dart';
+import '../../study_session/views/study_session_screen.dart';
 import '../widgets/vocabulary_card.dart';
 import '../widgets/add_vocabulary_dialog.dart';
 
