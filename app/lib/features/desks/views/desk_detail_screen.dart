@@ -226,13 +226,6 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.desk.description != null) ...[
-                  Text(
-                    widget.desk.description!,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 8),
-                ],
                 if (_deskStats != null) ...[
                   Row(
                     children: [
