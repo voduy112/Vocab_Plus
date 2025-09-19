@@ -18,7 +18,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'vocab_plus.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -114,6 +114,28 @@ class DatabaseHelper {
         await db.execute(
             'CREATE INDEX idx_vocabularies_srs_due ON vocabularies(srs_due)');
       } catch (_) {}
+    }
+    if (oldVersion < 4) {
+      // Remove description column from desks by recreating the table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS desks_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          color TEXT DEFAULT '#2196F3',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          is_active INTEGER DEFAULT 1
+        )
+      ''');
+      // Copy data from old table (skip description)
+      try {
+        await db.execute('''
+          INSERT INTO desks_new (id, name, color, created_at, updated_at, is_active)
+          SELECT id, name, color, created_at, updated_at, is_active FROM desks
+        ''');
+      } catch (_) {}
+      await db.execute('DROP TABLE IF EXISTS desks');
+      await db.execute('ALTER TABLE desks_new RENAME TO desks');
     }
   }
 
