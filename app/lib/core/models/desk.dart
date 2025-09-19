@@ -1,7 +1,6 @@
 class Desk {
   final int? id;
   final String name;
-  final String? description;
   final String color;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -10,7 +9,6 @@ class Desk {
   Desk({
     this.id,
     required this.name,
-    this.description,
     this.color = '#2196F3',
     required this.createdAt,
     required this.updatedAt,
@@ -22,7 +20,6 @@ class Desk {
     return Desk(
       id: map['id'],
       name: map['name'],
-      description: map['description'],
       color: map['color'] ?? '#2196F3',
       createdAt: DateTime.parse(map['created_at']),
       updatedAt: DateTime.parse(map['updated_at']),
@@ -35,7 +32,6 @@ class Desk {
     return {
       'id': id,
       'name': name,
-      'description': description,
       'color': color,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -47,7 +43,6 @@ class Desk {
   Desk copyWith({
     int? id,
     String? name,
-    String? description,
     String? color,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -56,7 +51,6 @@ class Desk {
     return Desk(
       id: id ?? this.id,
       name: name ?? this.name,
-      description: description ?? this.description,
       color: color ?? this.color,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -66,7 +60,7 @@ class Desk {
 
   @override
   String toString() {
-    return 'Desk(id: $id, name: $name, description: $description, color: $color, createdAt: $createdAt, updatedAt: $updatedAt, isActive: $isActive)';
+    return 'Desk(id: $id, name: $name, color: $color, createdAt: $createdAt, updatedAt: $updatedAt, isActive: $isActive)';
   }
 
   @override
@@ -75,7 +69,6 @@ class Desk {
     return other is Desk &&
         other.id == id &&
         other.name == name &&
-        other.description == description &&
         other.color == color &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
@@ -86,7 +79,6 @@ class Desk {
   int get hashCode {
     return id.hashCode ^
         name.hashCode ^
-        description.hashCode ^
         color.hashCode ^
         createdAt.hashCode ^
         updatedAt.hashCode ^
