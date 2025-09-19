@@ -4,7 +4,7 @@ import '../models/vocabulary.dart';
 import '../models/study_session.dart';
 import '../repositories/desk_repository.dart';
 import '../repositories/vocabulary_repository.dart';
-import '../repositories/study_session_repository.dart';
+import '../../features/study_session/repositories/study_session_repository.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
