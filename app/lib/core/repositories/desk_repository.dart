@@ -116,6 +116,13 @@ class DeskRepository {
     );
     final learned = Sqflite.firstIntValue(learnedResult) ?? 0;
 
+    // Số từ đã thành thạo (mastery_level >= 3)
+    final masteredResult = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND mastery_level >= 0 AND is_active = ?',
+      [deskId, 1],
+    );
+    final mastered = Sqflite.firstIntValue(masteredResult) ?? 0;
+
     // Số từ cần ôn tập
     final reviewResult = await db.rawQuery(
       'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND (next_review IS NULL OR next_review <= ?) AND is_active = ?',
@@ -132,12 +139,19 @@ class DeskRepository {
         ? (avgMasteryResult.first['avg'] as double? ?? 0.0).round()
         : 0;
 
+    // Tính progress dựa trên số từ vựng đã học
+    double progress = 0.0;
+    if (total > 0) {
+      progress = learned / total;
+    }
+
     return {
       'total': total,
       'learned': learned,
+      'mastered': mastered,
       'needReview': needReview,
       'avgMastery': avgMastery,
-      'progress': total > 0 ? (learned / total) : 0.0,
+      'progress': progress,
     };
   }
 }
