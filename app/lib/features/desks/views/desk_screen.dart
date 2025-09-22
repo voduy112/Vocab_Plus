@@ -6,6 +6,7 @@ import '../../../core/services/database_service.dart';
 import '../../../core/widgets/app_button.dart';
 import 'desk_detail_screen.dart';
 import '../widgets/create_desk_dialog.dart';
+import '../widgets/desk_tile.dart';
 
 class DesksScreen extends StatefulWidget {
   const DesksScreen({super.key});
@@ -47,15 +48,17 @@ class _DesksScreenState extends State<DesksScreen> {
     setState(() => _isLoading = true);
     try {
       final desks = await _databaseService.getAllDesks();
-      setState(() {
-        _desks = desks;
-        _filteredDesks = desks;
-        _isLoading = false;
-      });
-      _sortDesks();
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() {
+          _desks = desks;
+          _filteredDesks = desks;
+          _isLoading = false;
+        });
+        _sortDesks();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi khi tải danh sách desk: $e')),
         );
@@ -144,84 +147,87 @@ class _DesksScreenState extends State<DesksScreen> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Danh sách desk',
-              style: Theme.of(context)
-                  .textTheme
-                  .displaySmall
-                  ?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _searchController,
-            onChanged: _filterDesks,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              hintText: 'Search...',
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-                borderSide: BorderSide(color: Colors.blue.shade200),
-                gapPadding: 10,
+      child: RefreshIndicator(
+        onRefresh: _loadDesks,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Danh sách desk',
+                style: Theme.of(context)
+                    .textTheme
+                    .displaySmall
+                    ?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchController,
+              onChanged: _filterDesks,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide(color: Colors.blue.shade200),
+                  gapPadding: 10,
+                ),
+                fillColor: Colors.white,
               ),
-              fillColor: Colors.white,
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              AppButton(
-                  onPressed: _createNewDesk,
-                  label: 'Tạo desk mới',
-                  icon: Icons.add,
-                  variant: AppButtonVariant.outlined),
-              const SizedBox(width: 12),
-              AppButton(
-                  onPressed: _toggleNameSort,
-                  label: 'Sắp xếp',
-                  icon: _faSortIcon(),
-                  variant: AppButtonVariant.text),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (_filteredDesks.isEmpty)
-            Center(
-              child: Column(
-                children: [
-                  Icon(Icons.folder_open, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    _searchQuery.isEmpty
-                        ? 'Chưa có desk nào'
-                        : 'Không tìm thấy desk nào',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                  if (_searchQuery.isEmpty) ...[
-                    const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                AppButton(
+                    onPressed: _createNewDesk,
+                    label: 'Tạo desk mới',
+                    icon: Icons.add,
+                    variant: AppButtonVariant.outlined),
+                const SizedBox(width: 12),
+                AppButton(
+                    onPressed: _toggleNameSort,
+                    label: 'Sắp xếp',
+                    icon: _faSortIcon(),
+                    variant: AppButtonVariant.text),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_filteredDesks.isEmpty)
+              Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.folder_open, size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
                     Text(
-                      'Tạo desk đầu tiên để bắt đầu học từ vựng',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[500],
+                      _searchQuery.isEmpty
+                          ? 'Chưa có desk nào'
+                          : 'Không tìm thấy desk nào',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.grey[600],
                           ),
                     ),
+                    if (_searchQuery.isEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tạo desk đầu tiên để bắt đầu học từ vựng',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[500],
+                            ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            )
-          else
-            ..._filteredDesks.map((desk) => _DeskTile(
-                  desk: desk,
-                  onTap: () => _navigateToDeskDetail(desk),
-                  onDelete: () => _deleteDesk(desk),
-                )),
-        ],
+                ),
+              )
+            else
+              ..._filteredDesks.map((desk) => DeskTile(
+                    desk: desk,
+                    onTap: () => _navigateToDeskDetail(desk),
+                    onDelete: () => _deleteDesk(desk),
+                  )),
+          ],
+        ),
       ),
     );
   }
@@ -265,81 +271,5 @@ class _DesksScreenState extends State<DesksScreen> {
         }
       }
     }
-  }
-}
-
-class _DeskTile extends StatelessWidget {
-  final Desk desk;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-
-  const _DeskTile({
-    required this.desk,
-    required this.onTap,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Color(int.parse(desk.color.replaceFirst('#', '0xFF'))),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.folder,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          desk.name,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Description removed from model
-            FutureBuilder<Map<String, dynamic>>(
-              future: DatabaseService().getDeskStats(desk.id!),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  final stats = snapshot.data!;
-                  return Text(
-                    '${stats['total']} từ vựng · ${stats['learned']} đã học\nTiến độ: ${(stats['progress'] * 100).round()}%',
-                  );
-                }
-                return const Text('Đang tải...');
-              },
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'delete') {
-              onDelete();
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Xóa'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
