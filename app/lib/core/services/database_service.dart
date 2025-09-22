@@ -2,8 +2,8 @@ import '../database/database_helper.dart';
 import '../models/desk.dart';
 import '../models/vocabulary.dart';
 import '../models/study_session.dart';
-import '../repositories/desk_repository.dart';
-import '../repositories/vocabulary_repository.dart';
+import '../../features/desks/repositories/desk_repository.dart';
+import '../../features/desks/repositories/vocabulary_repository.dart';
 import '../../features/study_session/repositories/study_session_repository.dart';
 
 class DatabaseService {
@@ -41,178 +41,24 @@ class DatabaseService {
       _vocabularyRepository.deleteVocabulary(id);
   Future<List<Vocabulary>> searchVocabularies(int deskId, String query) =>
       _vocabularyRepository.searchVocabularies(deskId, query);
-  Future<List<Vocabulary>> getVocabulariesForReview(int deskId) =>
-      _vocabularyRepository.getVocabulariesForReview(deskId);
+  Future<List<Vocabulary>> getVocabulariesForStudy(int deskId) =>
+      _vocabularyRepository.getVocabulariesForStudy(deskId);
   Future<int> updateMasteryLevel(int vocabularyId, int newMasteryLevel,
           {DateTime? nextReview}) =>
       _vocabularyRepository.updateMasteryLevel(vocabularyId, newMasteryLevel,
           nextReview: nextReview);
-  Future<List<int>> importVocabularies(List<Vocabulary> vocabularies) =>
-      _vocabularyRepository.importVocabularies(vocabularies);
 
   // Study session operations
   Future<int> createStudySession(StudySession session) =>
       _studySessionRepository.createStudySession(session);
   Future<List<StudySession>> getSessionsByDeskId(int deskId) =>
       _studySessionRepository.getSessionsByDeskId(deskId);
-  Future<Map<String, dynamic>> getStudyStats(int deskId,
-          {DateTime? startDate, DateTime? endDate}) =>
-      _studySessionRepository.getStudyStats(deskId,
-          startDate: startDate, endDate: endDate);
-  Future<int> getStudyStreak(int deskId) =>
-      _studySessionRepository.getStudyStreak(deskId);
 
   // Utility methods
   Future<void> closeDatabase() => _databaseHelper.close();
   Future<void> deleteDatabase() => _databaseHelper.deleteDatabase();
 
-  // Helper method để tính toán thời gian ôn tập tiếp theo
-  DateTime calculateNextReview(int currentMasteryLevel,
-      {bool isCorrect = true}) {
-    final now = DateTime.now();
-
-    if (!isCorrect) {
-      // Nếu trả lời sai, ôn tập lại sau 1 ngày
-      return now.add(const Duration(days: 1));
-    }
-
-    // Tính toán dựa trên mức độ thành thạo và độ khó
-    int daysToAdd;
-
-    if (currentMasteryLevel < 30) {
-      daysToAdd = 1; // Ôn tập hàng ngày
-    } else if (currentMasteryLevel < 60) {
-      daysToAdd = 3; // Ôn tập 3 ngày một lần
-    } else if (currentMasteryLevel < 80) {
-      daysToAdd = 7; // Ôn tập hàng tuần
-    } else {
-      daysToAdd = 30; // Ôn tập hàng tháng
-    }
-
-    // Điều chỉnh dựa trên độ khó
-    daysToAdd = (daysToAdd * (1 + (1 - 1) * 0.2)).round();
-
-    return now.add(Duration(days: daysToAdd));
-  }
-
-  // Helper method để cập nhật mức độ thành thạo sau khi học
-  Future<void> updateVocabularyAfterStudy(
-    int vocabularyId,
-    bool isCorrect, {
-    int timeSpent = 0,
-    SessionType sessionType = SessionType.learn,
-  }) async {
-    final vocabulary = await getVocabularyById(vocabularyId);
-    if (vocabulary == null) return;
-
-    final now = DateTime.now();
-    int newMasteryLevel = vocabulary.masteryLevel;
-
-    if (isCorrect) {
-      // Tăng mức độ thành thạo
-      newMasteryLevel = (vocabulary.masteryLevel + 10).clamp(0, 100);
-    } else {
-      // Giảm mức độ thành thạo
-      newMasteryLevel = (vocabulary.masteryLevel - 5).clamp(0, 100);
-    }
-
-    // Tính thời gian ôn tập tiếp theo
-    final nextReview =
-        calculateNextReview(newMasteryLevel, isCorrect: isCorrect);
-
-    // Cập nhật từ vựng
-    await updateMasteryLevel(vocabularyId, newMasteryLevel,
-        nextReview: nextReview);
-
-    // Tạo session học
-    final session = StudySession(
-      deskId: vocabulary.deskId,
-      vocabularyId: vocabularyId,
-      sessionType: sessionType,
-      result: isCorrect ? SessionResult.correct : SessionResult.incorrect,
-      timeSpent: timeSpent,
-      createdAt: now,
-    );
-
-    await createStudySession(session);
-  }
-
-  // --- Spaced Repetition (SM-2) helpers ---
-  // 4-button choices like Anki: Again, Hard, Good, Easy
-  // Use these to both preview due dates and commit a review decision
-  // Lưu ý: Các bước "Again" và "Hard" lần học đầu có thể là phút, được lưu vào srs_due theo phút
-  // trong khi srs_interval tính theo ngày vẫn có thể bằng 0
-
-  // Các lựa chọn hiển thị trên UI
-  // again: <1ph, hard: <10ph (lần đầu) hoặc tăng nhẹ, good: 1ng/6ng/EF*I, easy: >good (x1.5)
-
-  // Enum đại diện nút
-  // ignore_for_file: constant_identifier_names
-
-  // Choices
-  // again = làm lại ngay; hard = khó; good = được; easy = dễ
-
-  // quality: 0..5 (0 worst, 5 best)
-  Future<void> reviewWithSrs({
-    required int vocabularyId,
-    required int quality,
-    SessionType sessionType = SessionType.review,
-    int timeSpentSeconds = 0,
-  }) async {
-    final vocab = await getVocabularyById(vocabularyId);
-    if (vocab == null) return;
-
-    // Clamp quality
-    final q = quality.clamp(0, 5);
-
-    double ef = vocab.srsEaseFactor; // ease factor
-    int interval = vocab.srsIntervalDays; // days
-    int reps = vocab.srsRepetitions;
-
-    final bool isLapse = q < 3;
-    if (isLapse) {
-      // Lapse: reset repetitions, short interval (1 day) similar to Anki default
-      reps = 0;
-      interval = 1;
-    } else {
-      // Learning / Review steps
-      if (reps == 0) {
-        interval = 1; // first good => 1 day
-      } else if (reps == 1) {
-        interval = 6; // second good => 6 days
-      } else {
-        interval = (interval * ef).round();
-      }
-      reps = reps + 1;
-    }
-
-    // Update EF per SM-2
-    ef = ef + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)); // SM-2 formula
-    if (ef < 1.3) ef = 1.3;
-
-    final due = DateTime.now().add(Duration(days: interval));
-
-    // Persist SRS scheduling
-    await _vocabularyRepository.updateSrsSchedule(
-      vocabularyId: vocabularyId,
-      easeFactor: ef,
-      intervalDays: interval,
-      repetitions: reps,
-      due: due,
-    );
-
-    // Also create study session record
-    final session = StudySession(
-      deskId: vocab.deskId,
-      vocabularyId: vocabularyId,
-      sessionType: sessionType,
-      result: q >= 3 ? SessionResult.correct : SessionResult.incorrect,
-      timeSpent: timeSpentSeconds,
-      createdAt: DateTime.now(),
-    );
-    await createStudySession(session);
-  }
-
+  // --- Spaced Repetition helpers ---
   // Map 4-nút sang SM-2, với bước học đầu tiên theo phút
   Future<void> reviewWithChoice({
     required int vocabularyId,
@@ -302,6 +148,29 @@ class DatabaseService {
       due: due,
     );
 
+    // Cập nhật mastery_level dựa trên lựa chọn
+    int newMasteryLevel = vocab.masteryLevel;
+    if (choice == SrsChoice.easy) {
+      // Dễ: tăng mastery_level đáng kể
+      newMasteryLevel = (vocab.masteryLevel + 25).clamp(0, 100);
+    } else if (choice == SrsChoice.good) {
+      // Tốt: tăng mastery_level vừa phải
+      newMasteryLevel = (vocab.masteryLevel + 15).clamp(0, 100);
+    } else if (choice == SrsChoice.hard) {
+      // Khó: tăng mastery_level ít
+      newMasteryLevel = (vocab.masteryLevel + 5).clamp(0, 100);
+    }
+    // Again: không tăng mastery_level
+
+    // Cập nhật mastery_level nếu có thay đổi
+    if (newMasteryLevel != vocab.masteryLevel) {
+      await _vocabularyRepository.updateMasteryLevel(
+        vocabularyId,
+        newMasteryLevel,
+        nextReview: due,
+      );
+    }
+
     final session = StudySession(
       deskId: vocab.deskId,
       vocabularyId: vocabularyId,
@@ -315,7 +184,7 @@ class DatabaseService {
 
   // --- Queue helpers for today ---
   Future<List<Vocabulary>> getTodayDueVocabularies(int deskId, {int? limit}) {
-    return _vocabularyRepository.getVocabulariesForReview(deskId, limit: limit);
+    return _vocabularyRepository.getVocabulariesForStudy(deskId);
   }
 
   Future<Map<String, int>> getTodayQueueCounts(int deskId) async {
@@ -384,10 +253,11 @@ class DatabaseService {
 
   String _intervalLabel(Duration d) {
     if (d.inMinutes < 1) return '<1ph';
-    if (d.inMinutes < 10) return '<10ph';
-    if (d.inDays < 1) return '${d.inHours}h';
-    if (d.inDays == 1) return '1ng';
-    return '${d.inDays}ng';
+    if (d.inMinutes < 60) return '${d.inMinutes}ph';
+    if (d.inHours < 24) return '${d.inHours}h';
+    if (d.inDays < 1.5) return '1ng';
+    if (d.inDays < 2.5) return '2ng';
+    return '${d.inDays.round()}ng';
   }
 }
 
