@@ -3,8 +3,7 @@ import '../../../core/models/desk.dart';
 import '../../../core/models/vocabulary.dart';
 import '../../../core/models/study_session.dart';
 import '../../../core/services/database_service.dart';
-import '../widgets/vocabulary_card.dart';
-import '../widgets/choice_buttons.dart';
+import '../widgets/flashcard.dart';
 import '../widgets/empty_state.dart';
 
 class StudySessionScreen extends StatefulWidget {
@@ -31,7 +30,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   Future<void> _loadQueue() async {
     setState(() => _isLoading = true);
     try {
-      final items = await _service.getVocabulariesForReview(widget.desk.id!);
+      final items = await _service.getVocabulariesForStudy(widget.desk.id!);
       setState(() {
         _queue = items;
         _index = 0;
@@ -67,7 +66,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
         choice: choice,
         sessionType: SessionType.review,
       );
-      // Remove reviewed card from queue and move to next
+      // xóa từ ra khỏi hàng đợi
       setState(() {
         _queue.removeAt(_index);
         if (_index >= _queue.length) _index = 0;
@@ -112,11 +111,13 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          VocabularyCard(vocabulary: v),
-          const Spacer(),
-          ChoiceButtons(
-            labels: _labels,
-            onChoiceSelected: _choose,
+          Expanded(
+            child: Flashcard(
+              vocabulary: v,
+              labels: _labels,
+              onChoiceSelected: _choose,
+              accentColor: color,
+            ),
           ),
         ],
       ),
