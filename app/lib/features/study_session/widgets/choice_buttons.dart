@@ -45,7 +45,7 @@ class ChoiceButtons extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: Colors.grey[700],
+          color: Colors.white,
           fontSize: 12,
         ),
       ),
@@ -54,8 +54,8 @@ class ChoiceButtons extends StatelessWidget {
 
   Widget _pillButton(String text, VoidCallback onPressed) {
     return SizedBox(
-      width: 78,
-      child: OutlinedButton(
+      width: 60,
+      child: ElevatedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           shape: const StadiumBorder(),
