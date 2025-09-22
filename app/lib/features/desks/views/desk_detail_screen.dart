@@ -195,12 +195,14 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            onPressed: () {
-              Navigator.of(context).push(
+            onPressed: () async {
+              await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => StudySessionScreen(desk: widget.desk),
                 ),
               );
+              // Refresh thống kê sau khi học xong
+              await _loadDeskStats();
             },
             icon: const Icon(Icons.play_arrow_rounded),
             tooltip: 'Bắt đầu học',
