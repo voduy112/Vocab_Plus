@@ -66,10 +66,18 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
         choice: choice,
         sessionType: SessionType.review,
       );
-      // xóa từ ra khỏi hàng đợi
+      // Nếu lựa chọn là theo phút (label kết thúc bằng 'ph' hoặc '<1ph'), đưa thẻ về cuối hàng đợi
+      final label = _labels[choice] ?? '';
+      final isMinuteChoice = label.endsWith('ph') || label.startsWith('<1ph');
       setState(() {
-        _queue.removeAt(_index);
-        if (_index >= _queue.length) _index = 0;
+        if (isMinuteChoice) {
+          final current = _queue.removeAt(_index);
+          _queue.add(current);
+          if (_index >= _queue.length) _index = 0;
+        } else {
+          _queue.removeAt(_index);
+          if (_index >= _queue.length) _index = 0;
+        }
       });
       _refreshLabels();
     } catch (e) {
