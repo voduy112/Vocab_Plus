@@ -61,25 +61,39 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     if (_queue.isEmpty || _index >= _queue.length) return;
     final v = _queue[_index];
     try {
-      await _service.reviewWithChoice(
+      final result = await _service.reviewWithChoice(
         vocabularyId: v.id!,
         choice: choice,
         sessionType: SessionType.review,
       );
-      // Nếu lựa chọn là theo phút (label kết thúc bằng 'ph' hoặc '<1ph'), đưa thẻ về cuối hàng đợi
-      final label = _labels[choice] ?? '';
-      final isMinuteChoice = label.endsWith('ph') || label.startsWith('<1ph');
-      setState(() {
-        if (isMinuteChoice) {
-          final current = _queue.removeAt(_index);
-          _queue.add(current);
-          if (_index >= _queue.length) _index = 0;
-        } else {
-          _queue.removeAt(_index);
-          if (_index >= _queue.length) _index = 0;
-        }
-      });
-      _refreshLabels();
+      final int updatedSrsType = (result['srsType'] as int?) ?? v.srsType;
+      final bool dueIsMinutes = (result['dueIsMinutes'] as bool?) ?? false;
+      print('updatedSrsType: $updatedSrsType');
+      print('dueIsMinutes: $dueIsMinutes');
+      print('choice: $choice');
+      print('Từ vựng đã được ghi nhận học với choice: $choice');
+
+      if (!dueIsMinutes || updatedSrsType == 2 || choice == SrsChoice.easy) {
+        // Due theo ngày hoặc đã vào review: loại khỏi phiên
+        _queue.removeAt(_index);
+        if (_index >= _queue.length) _index = 0;
+      } else {
+        // Còn học theo phút: giữ trong phiên
+        final current = _queue.removeAt(_index);
+        _queue.add(current);
+        if (_index >= _queue.length) _index = 0;
+      }
+      // Fetch latest SRS for the new front card and update labels immediately
+      if (_queue.isEmpty || _index >= _queue.length) {
+        setState(() => _labels = const {});
+      } else {
+        final currentFrontId = _queue[_index].id!;
+        final latest = await _service.getVocabularyById(currentFrontId);
+        if (!mounted) return;
+        setState(() {
+          _labels = _service.previewChoiceLabels(latest ?? _queue[_index]);
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
