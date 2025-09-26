@@ -113,20 +113,29 @@ class VocabularyRepository {
     required int intervalDays,
     required int repetitions,
     required DateTime? due,
+    int? srsType,
+    int? srsQueue,
+    int? srsLapses,
+    int? srsLeft,
   }) async {
     final db = await _databaseHelper.database;
     final now = DateTime.now().toIso8601String();
+    final updateData = {
+      'srs_ease_factor': easeFactor,
+      'srs_interval': intervalDays,
+      'srs_repetitions': repetitions,
+      'srs_due': due?.toIso8601String(),
+      'last_reviewed': now,
+      'updated_at': now,
+      'review_count': (await _getReviewCount(vocabularyId)) + 1,
+    };
+    if (srsType != null) updateData['srs_type'] = srsType;
+    if (srsQueue != null) updateData['srs_queue'] = srsQueue;
+    if (srsLapses != null) updateData['srs_lapses'] = srsLapses;
+    if (srsLeft != null) updateData['srs_left'] = srsLeft;
     return await db.update(
       'vocabularies',
-      {
-        'srs_ease_factor': easeFactor,
-        'srs_interval': intervalDays,
-        'srs_repetitions': repetitions,
-        'srs_due': due?.toIso8601String(),
-        'last_reviewed': now,
-        'updated_at': now,
-        'review_count': (await _getReviewCount(vocabularyId)) + 1,
-      },
+      updateData,
       where: 'id = ?',
       whereArgs: [vocabularyId],
     );
@@ -184,7 +193,7 @@ class VocabularyRepository {
     final masteryStats = await db.rawQuery('''
       SELECT 
         CASE 
-          WHEN mastery_level = 0 THEN 'not_learned'
+          WHEN mastery_level = 0 THEN 'not_learned'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
           WHEN mastery_level < 30 THEN 'beginner'
           WHEN mastery_level < 60 THEN 'intermediate'
           WHEN mastery_level < 80 THEN 'advanced'
