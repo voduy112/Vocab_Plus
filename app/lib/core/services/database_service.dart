@@ -61,14 +61,208 @@ class DatabaseService {
   // --- Spaced Repetition helpers ---
   // Map 4-nút sang SM-2, với bước học đầu tiên theo phút
   DateTime _startOfDay(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
-  Future<void> reviewWithChoice({
+
+  // Helper: xác định step hiện tại cho learning theo srs_left (b phần nghìn)
+  int _currentLearningStep(int srsLeft, int srsRepetitions) {
+    if (srsRepetitions == 0) return 1; // mới => bước 1
+    final int remainder = srsLeft % 1000;
+    if (remainder == 2) return 2;
+    if (remainder == 1) return 3; // day-learning
+    return 1; // fallback
+  }
+
+  // Mô phỏng lịch SRS khi chọn 1 nút. Trả về map chứa các trường cập nhật.
+  Map<String, dynamic> _simulateSrs(Vocabulary vocab, SrsChoice choice,
+      {DateTime? nowOverride}) {
+    final DateTime now = nowOverride ?? DateTime.now();
+
+    double ef = vocab.srsEaseFactor;
+    int interval = vocab.srsIntervalDays;
+    int reps = vocab.srsRepetitions;
+    int lapses = vocab.srsLapses;
+    int left = vocab.srsLeft;
+    int srsType = vocab.srsType; // 0=new, 1=learning, 2=review
+    int srsQueue = vocab.srsQueue; // 0=new, 1=learning, 2=review
+
+    final bool isLearning = (srsType == 0 || srsType == 1 || reps == 0);
+    DateTime due;
+    bool dueIsMinutes = false;
+
+    if (isLearning) {
+      // 3-step program: 1m (LRN), 10m (LRN), 1d (DLN)
+      final int step = _currentLearningStep(left, reps);
+      srsType = 1;
+      srsQueue = 1;
+      interval = 0;
+      reps = reps + 1;
+
+      if (step == 1) {
+        if (choice == SrsChoice.again) {
+          due = now.add(const Duration(minutes: 1));
+          dueIsMinutes = true;
+          left = 1000 + 3; // reset về bước 1 (còn 3 bước)
+        } else if (choice == SrsChoice.hard) {
+          due = now.add(const Duration(minutes: 6)); // TB(1m,10m)≈6m
+          dueIsMinutes = true;
+          left = 1000 + 3; // vẫn còn đủ 3 bước để tốt nghiệp
+        } else if (choice == SrsChoice.good) {
+          due = now.add(const Duration(minutes: 10));
+          dueIsMinutes = true;
+          left = 1000 + 2; // sang bước 2
+        } else {
+          // Easy: tốt nghiệp ngay sang review với easy interval 4d
+          srsType = 2;
+          srsQueue = 2;
+          interval = 4;
+          due = _startOfDay(now.add(Duration(days: interval)));
+          left = 0;
+        }
+      } else if (step == 2) {
+        if (choice == SrsChoice.again) {
+          due = now.add(const Duration(minutes: 1));
+          dueIsMinutes = true;
+          left = 1000 + 3; // reset về bước 1
+        } else if (choice == SrsChoice.hard) {
+          due = now.add(const Duration(minutes: 8)); // lặp lại bước 2 (8 phút)
+          dueIsMinutes = true;
+          left = 1000 + 2;
+        } else if (choice == SrsChoice.good) {
+          // Chọn "ngày" tại bước 2: tốt nghiệp ngay sang review với graduating interval = 1d
+          srsType = 2;
+          srsQueue = 2;
+          interval = 1;
+          due = _startOfDay(now.add(Duration(days: interval)));
+          dueIsMinutes = false;
+          left = 0;
+        } else {
+          // Easy: tốt nghiệp ngay
+          srsType = 2;
+          srsQueue = 2;
+          interval = 4;
+          due = _startOfDay(now.add(Duration(days: interval)));
+          dueIsMinutes = false;
+          left = 0;
+        }
+      } else {
+        // step 3 (day-learning 1d)
+        if (choice == SrsChoice.again) {
+          due = now.add(const Duration(minutes: 1));
+          dueIsMinutes = true;
+          left = 1000 + 3; // reset về bước 1
+        } else if (choice == SrsChoice.hard) {
+          due =
+              _startOfDay(now.add(const Duration(days: 1))); // lặp lại day step
+          dueIsMinutes = false;
+          left = 1000 + 1;
+        } else if (choice == SrsChoice.good) {
+          // tốt nghiệp với graduating interval = 1d
+          srsType = 2;
+          srsQueue = 2;
+          interval = 1;
+          due = _startOfDay(now.add(Duration(days: interval)));
+          dueIsMinutes = false;
+          left = 0;
+        } else {
+          // Easy: tốt nghiệp với easy interval = 4d
+          srsType = 2;
+          srsQueue = 2;
+          interval = 4;
+          due = _startOfDay(now.add(Duration(days: interval)));
+          dueIsMinutes = false;
+          left = 0;
+        }
+      }
+    } else {
+      // Review (SM-2 style EF updates and interval scaling)
+      int q;
+      switch (choice) {
+        case SrsChoice.again:
+          q = 1;
+          break;
+        case SrsChoice.hard:
+          q = 3;
+          break;
+        case SrsChoice.good:
+          q = 4;
+          break;
+        case SrsChoice.easy:
+          q = 5;
+          break;
+      }
+
+      // Update EF per SM-2 formula and clamp
+      ef = (ef + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))).clamp(1.3, 3.0);
+
+      if (choice == SrsChoice.again) {
+        // Lapse -> relearn
+        lapses = lapses + 1;
+        srsType = 1;
+        srsQueue = 1;
+        interval = 0;
+        due = now.add(const Duration(minutes: 1));
+        dueIsMinutes = true;
+        reps = reps + 1;
+        left = 1000 + 2; // relearn hai bước (1m -> 10m) trước khi day step
+      } else if (choice == SrsChoice.hard) {
+        // If previous interval is invalid/zero, seed a distinct base interval
+        if (interval < 1) {
+          interval = 1;
+        } else {
+          interval = (interval * 1.2).round();
+          if (interval < 1) interval = 1;
+        }
+        due = _startOfDay(now.add(Duration(days: interval)));
+        dueIsMinutes = false;
+        reps = reps + 1;
+      } else if (choice == SrsChoice.good) {
+        if (interval < 1) {
+          interval = 2;
+        } else {
+          interval = (interval * ef).round();
+          if (interval < 1) interval = 1;
+        }
+        due = _startOfDay(now.add(Duration(days: interval)));
+        dueIsMinutes = false;
+        reps = reps + 1;
+      } else {
+        // easy
+        if (interval < 1) {
+          interval = 4;
+        } else {
+          int goodInterval = (interval * ef).round();
+          if (goodInterval < 1) goodInterval = 1;
+          interval = (goodInterval * 1.3).round();
+        }
+        if (interval < 1) interval = 1;
+        due = _startOfDay(now.add(Duration(days: interval)));
+        dueIsMinutes = false;
+        reps = reps + 1;
+      }
+      srsType = (choice == SrsChoice.again) ? 1 : 2;
+      srsQueue = (choice == SrsChoice.again) ? 1 : 2;
+    }
+
+    return {
+      'ef': ef,
+      'interval': interval,
+      'reps': reps,
+      'lapses': lapses,
+      'left': left,
+      'srsType': srsType,
+      'srsQueue': srsQueue,
+      'due': due,
+      'dueIsMinutes': dueIsMinutes,
+    };
+  }
+
+  Future<Map<String, dynamic>> reviewWithChoice({
     required int vocabularyId,
     required SrsChoice choice,
     SessionType sessionType = SessionType.review,
     int timeSpentSeconds = 0,
   }) async {
     final vocab = await getVocabularyById(vocabularyId);
-    if (vocab == null) return;
+    if (vocab == null) return {'srsType': -1, 'dueIsMinutes': false};
 
     // Mặc định map sang quality
     int quality;
@@ -87,86 +281,50 @@ class DatabaseService {
         break;
     }
 
-    double ef = vocab.srsEaseFactor;
-    int interval = vocab.srsIntervalDays;
-    int reps = vocab.srsRepetitions;
-    final bool isFirstLearning = (reps == 0);
+    final sim = _simulateSrs(vocab, choice);
+    final double ef = sim['ef'] as double;
+    final int interval = sim['interval'] as int;
+    final int reps = sim['reps'] as int;
+    final int lapses = sim['lapses'] as int;
+    final int left = sim['left'] as int;
+    final int srsType = sim['srsType'] as int;
+    final int srsQueue = sim['srsQueue'] as int;
+    final DateTime computedDue = sim['due'] as DateTime;
+    final bool isMinuteInterval = (sim['dueIsMinutes'] as bool?) ?? false;
+    // Minute choices must not change due at all (even if null)
+    final DateTime? selectedDue = isMinuteInterval ? vocab.srsDue : computedDue;
 
-    DateTime due;
-    if (choice == SrsChoice.again) {
-      reps = 0;
-      interval = 0;
-      ef = (ef + (0.1 - (5 - 1) * (0.08 + (5 - 1) * 0.02))).clamp(1.3, 3.0);
-      due = DateTime.now().add(const Duration(minutes: 1));
-    } else if (choice == SrsChoice.hard) {
-      // lần đầu: 6 phút, các lần sau: tăng nhẹ và giảm EF một chút
-      if (reps == 0) {
-        due = DateTime.now().add(const Duration(minutes: 6));
-        interval = 0;
-        reps = 0;
-      } else {
-        interval = (interval * 1.2).round(); // Hard interval grows slower
-        if (interval < 1) interval = 1;
-        due = _startOfDay(DateTime.now().add(Duration(days: interval)));
-      }
-      ef = (ef - 0.15).clamp(1.3, 3.0);
-    } else if (choice == SrsChoice.good) {
-      if (reps == 0) {
-        // lần đầu: 10 phút (vẫn ở trạng thái learning)
-        interval = 0;
-        reps = 0;
-        ef = (ef + 0.05).clamp(1.3, 3.0);
-        due = DateTime.now().add(const Duration(minutes: 10));
-      } else if (reps == 1) {
-        interval = 6;
-        reps = reps + 1;
-        // EF cập nhật theo quality 4
-        ef = (ef + (0.1 - (5 - 4) * (0.08 + (5 - 4) * 0.02))).clamp(1.3, 3.0);
-        due = _startOfDay(DateTime.now().add(Duration(days: interval)));
-      } else {
-        interval = (interval * ef).round();
-        if (interval < 1) interval = 1;
-        reps = reps + 1;
-        // EF cập nhật theo quality 4
-        ef = (ef + (0.1 - (5 - 4) * (0.08 + (5 - 4) * 0.02))).clamp(1.3, 3.0);
-        due = _startOfDay(DateTime.now().add(Duration(days: interval)));
-      }
-    } else {
-      // easy
-      int goodInterval;
-      if (reps == 0) {
-        goodInterval = 1;
-      } else if (reps == 1) {
-        goodInterval = 6;
-      } else {
-        goodInterval = (interval * ef).round();
-        if (goodInterval < 1) goodInterval = 1;
-      }
-      interval = (goodInterval * 1.5).round(); // Easy bonus ~1.5x
-      reps = reps + 1;
-      ef = (ef + 0.15);
-      if (ef < 1.3) ef = 1.3;
-      due = _startOfDay(DateTime.now().add(Duration(days: interval)));
-    }
+    print('due: $selectedDue');
+    print('srsType: $srsType');
+    print('srsQueue: $srsQueue');
+    print('lapses: $lapses');
+    print('left: $left');
+    print('ef: $ef');
+    print('interval: $interval');
+    print('reps: $reps');
+    print('quality: $quality');
+    print('timeSpentSeconds: $timeSpentSeconds');
+    print('sessionType: $sessionType');
+    print('vocabularyId: $vocabularyId');
+    print('choice: $choice');
+    print('vocab: $vocab');
 
-    // Không cập nhật due nếu là lựa chọn theo phút
-    final bool isMinuteChoice = choice == SrsChoice.again ||
-        (isFirstLearning &&
-            (choice == SrsChoice.hard || choice == SrsChoice.good));
-    if (!isMinuteChoice) {
-      await _vocabularyRepository.updateSrsSchedule(
-        vocabularyId: vocabularyId,
-        easeFactor: ef,
-        intervalDays: interval,
-        repetitions: reps,
-        due: due,
-      );
-    }
+    await _vocabularyRepository.updateSrsSchedule(
+      vocabularyId: vocabularyId,
+      easeFactor: ef,
+      intervalDays: interval,
+      repetitions: reps,
+      due: selectedDue,
+      srsType: srsType,
+      srsQueue: srsQueue,
+      srsLapses: lapses,
+      srsLeft: left,
+    );
 
     // Cập nhật mastery_level dựa trên lựa chọn
     int newMasteryLevel = vocab.masteryLevel;
-    // Nếu là lần học đầu, các lựa chọn theo phút (Again/Hard/Good) sẽ không tăng mastery
-    if (isFirstLearning &&
+    // Trong learning/relearning, Again/Hard/Good không tăng mastery
+    if (srsType == 1 &&
         (choice == SrsChoice.again ||
             choice == SrsChoice.hard ||
             choice == SrsChoice.good)) {
@@ -187,18 +345,11 @@ class DatabaseService {
 
     // Cập nhật mastery_level nếu có thay đổi
     if (newMasteryLevel != vocab.masteryLevel) {
-      if (isMinuteChoice) {
-        await _vocabularyRepository.updateMasteryLevel(
-          vocabularyId,
-          newMasteryLevel,
-        );
-      } else {
-        await _vocabularyRepository.updateMasteryLevel(
-          vocabularyId,
-          newMasteryLevel,
-          nextReview: due,
-        );
-      }
+      await _vocabularyRepository.updateMasteryLevel(
+        vocabularyId,
+        newMasteryLevel,
+        nextReview: srsType == 2 ? selectedDue : null,
+      );
     }
 
     final session = StudySession(
@@ -210,6 +361,12 @@ class DatabaseService {
       createdAt: DateTime.now(),
     );
     await createStudySession(session);
+    print('srsType: $srsType');
+    // Trả về srsType và cờ dueIsMinutes để UI quyết định hàng đợi ngay lập tức
+    return {
+      'srsType': srsType,
+      'dueIsMinutes': isMinuteInterval,
+    };
   }
 
   // --- Queue helpers for today ---
@@ -239,63 +396,59 @@ class DatabaseService {
   Map<SrsChoice, String> previewChoiceLabels(Vocabulary vocab) {
     final preview = previewChoiceDue(vocab);
     final labels = <SrsChoice, String>{};
+    final int step = _currentLearningStep(vocab.srsLeft, vocab.srsRepetitions);
+    final bool isLearningState =
+        (vocab.srsType == 0 || vocab.srsType == 1 || vocab.srsRepetitions == 0);
     preview.forEach((choice, due) {
-      labels[choice] = _intervalLabel(due.difference(DateTime.now()));
+      final Duration delta = due.difference(DateTime.now());
+      if (isLearningState && delta.inMinutes > 0 && delta.inMinutes < 60) {
+        // Chuẩn hoá nhãn phút cho toàn bộ trạng thái learning/relearning
+        switch (choice) {
+          case SrsChoice.again:
+            labels[choice] = '1ph';
+            break;
+          case SrsChoice.hard:
+            labels[choice] = (step == 2) ? '8ph' : '6ph';
+            break;
+          case SrsChoice.good:
+            labels[choice] = (step == 1) ? '10ph' : '1ng';
+            break;
+          case SrsChoice.easy:
+            labels[choice] = '4ng';
+            break;
+        }
+      } else {
+        labels[choice] = _intervalLabel(delta);
+      }
     });
     return labels;
   }
 
   Map<SrsChoice, DateTime> previewChoiceDue(Vocabulary v) {
-    final now = DateTime.now();
     final Map<SrsChoice, DateTime> map = {};
 
-    // Again
-    map[SrsChoice.again] = now.add(const Duration(minutes: 1));
-
-    // Hard
-    if (v.srsRepetitions == 0) {
-      map[SrsChoice.hard] = now.add(const Duration(minutes: 6));
-    } else {
-      final days =
-          ((v.srsIntervalDays <= 0 ? 1 : v.srsIntervalDays) * 1.2).round();
-      map[SrsChoice.hard] = _startOfDay(now.add(Duration(days: days)));
+    for (final choice in SrsChoice.values) {
+      final sim = _simulateSrs(v, choice);
+      map[choice] = sim['due'] as DateTime;
     }
-
-    // Good
-    int goodDays;
-    if (v.srsRepetitions == 0) {
-      // lần đầu: 10 phút
-      map[SrsChoice.good] = now.add(const Duration(minutes: 10));
-      goodDays = 1; // dùng để tính Easy phía dưới
-    } else if (v.srsRepetitions == 1) {
-      goodDays = 6;
-    } else {
-      final base = v.srsIntervalDays <= 0 ? 1 : v.srsIntervalDays;
-      goodDays = (base * v.srsEaseFactor).round();
-      if (goodDays < 1) goodDays = 1;
-    }
-    if (v.srsRepetitions > 0) {
-      map[SrsChoice.good] = _startOfDay(now.add(Duration(days: goodDays)));
-    }
-
-    // Easy
-    final easyDays = (goodDays * 1.5).round();
-    map[SrsChoice.easy] = _startOfDay(now.add(Duration(days: easyDays)));
 
     return map;
   }
 
   String _intervalLabel(Duration d) {
     if (d.inMinutes < 1) return '<1ph';
-    if (d.inMinutes < 60) return '${d.inMinutes}ph';
+    if (d.inMinutes < 60) {
+      final int minutesCeil = (d.inSeconds / 60).ceil();
+      return '${minutesCeil}ph';
+    }
     if (d.inDays < 1) return '1ng';
-    final int days = d.inDays;
-    if (days > 30) {
-      final double months = days / 30.0;
-      final String label = months.toStringAsFixed(1).replaceAll('.', ',');
+    final int daysCeil = (d.inHours / 24).ceil();
+    if (daysCeil > 30) {
+      final double monthsCeil = ((daysCeil / 30.0) * 10).ceil() / 10.0;
+      final String label = monthsCeil.toStringAsFixed(1).replaceAll('.', ',');
       return '${label}th';
     }
-    return '${days.round()}ng';
+    return '${daysCeil}ng';
   }
 }
 
