@@ -15,6 +15,11 @@ class Vocabulary {
   final int srsIntervalDays; // I (days)
   final int srsRepetitions; // repetitions count
   final DateTime? srsDue; // due date
+  // Anki-like scheduler state
+  final int srsType; // 0=new, 1=learning, 2=review
+  final int srsQueue; // 0=new, 1=learning, 2=review
+  final int srsLapses; // review again count
+  final int srsLeft; // learning steps counter
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
@@ -35,6 +40,10 @@ class Vocabulary {
     this.srsIntervalDays = 0,
     this.srsRepetitions = 0,
     this.srsDue,
+    this.srsType = 0,
+    this.srsQueue = 0,
+    this.srsLapses = 0,
+    this.srsLeft = 0,
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
@@ -62,6 +71,10 @@ class Vocabulary {
       srsIntervalDays: map['srs_interval'] ?? 0,
       srsRepetitions: map['srs_repetitions'] ?? 0,
       srsDue: map['srs_due'] != null ? DateTime.parse(map['srs_due']) : null,
+      srsType: map['srs_type'] ?? 0,
+      srsQueue: map['srs_queue'] ?? 0,
+      srsLapses: map['srs_lapses'] ?? 0,
+      srsLeft: map['srs_left'] ?? 0,
       createdAt: DateTime.parse(map['created_at']),
       updatedAt: DateTime.parse(map['updated_at']),
       isActive: map['is_active'] == 1,
@@ -86,6 +99,10 @@ class Vocabulary {
       'srs_interval': srsIntervalDays,
       'srs_repetitions': srsRepetitions,
       'srs_due': srsDue?.toIso8601String(),
+      'srs_type': srsType,
+      'srs_queue': srsQueue,
+      'srs_lapses': srsLapses,
+      'srs_left': srsLeft,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'is_active': isActive ? 1 : 0,
@@ -109,6 +126,10 @@ class Vocabulary {
     int? srsIntervalDays,
     int? srsRepetitions,
     DateTime? srsDue,
+    int? srsType,
+    int? srsQueue,
+    int? srsLapses,
+    int? srsLeft,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
@@ -129,6 +150,10 @@ class Vocabulary {
       srsIntervalDays: srsIntervalDays ?? this.srsIntervalDays,
       srsRepetitions: srsRepetitions ?? this.srsRepetitions,
       srsDue: srsDue ?? this.srsDue,
+      srsType: srsType ?? this.srsType,
+      srsQueue: srsQueue ?? this.srsQueue,
+      srsLapses: srsLapses ?? this.srsLapses,
+      srsLeft: srsLeft ?? this.srsLeft,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
@@ -176,6 +201,10 @@ class Vocabulary {
         other.srsIntervalDays == srsIntervalDays &&
         other.srsRepetitions == srsRepetitions &&
         other.srsDue == srsDue &&
+        other.srsType == srsType &&
+        other.srsQueue == srsQueue &&
+        other.srsLapses == srsLapses &&
+        other.srsLeft == srsLeft &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
         other.isActive == isActive;
@@ -198,6 +227,10 @@ class Vocabulary {
         srsIntervalDays.hashCode ^
         srsRepetitions.hashCode ^
         srsDue.hashCode ^
+        srsType.hashCode ^
+        srsQueue.hashCode ^
+        srsLapses.hashCode ^
+        srsLeft.hashCode ^
         createdAt.hashCode ^
         updatedAt.hashCode ^
         isActive.hashCode;
