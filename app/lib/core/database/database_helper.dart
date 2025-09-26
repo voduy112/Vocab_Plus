@@ -18,7 +18,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'vocab_plus.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -30,7 +30,6 @@ class DatabaseHelper {
       CREATE TABLE desks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        description TEXT,
         color TEXT DEFAULT '#2196F3',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -49,7 +48,6 @@ class DatabaseHelper {
         example TEXT,
         translation TEXT,
         mastery_level INTEGER DEFAULT 0,
-        review_count INTEGER DEFAULT 0,
         last_reviewed TEXT,
         next_review TEXT,
         -- SRS fields (SM-2)
@@ -57,6 +55,11 @@ class DatabaseHelper {
         srs_interval INTEGER DEFAULT 0, -- days
         srs_repetitions INTEGER DEFAULT 0,
         srs_due TEXT,
+        -- Anki-like scheduler state
+        srs_type INTEGER DEFAULT 0, -- 0=new, 1=learning, 2=review
+        srs_queue INTEGER DEFAULT 0, -- 0=new, 1=learning, 2=review
+        srs_lapses INTEGER DEFAULT 0,
+        srs_left INTEGER DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         is_active INTEGER DEFAULT 1,
@@ -136,6 +139,25 @@ class DatabaseHelper {
       } catch (_) {}
       await db.execute('DROP TABLE IF EXISTS desks');
       await db.execute('ALTER TABLE desks_new RENAME TO desks');
+    }
+    if (oldVersion < 5) {
+      // Add Anki-like scheduler columns to vocabularies
+      try {
+        await db.execute(
+            "ALTER TABLE vocabularies ADD COLUMN srs_type INTEGER DEFAULT 0");
+      } catch (_) {}
+      try {
+        await db.execute(
+            "ALTER TABLE vocabularies ADD COLUMN srs_queue INTEGER DEFAULT 0");
+      } catch (_) {}
+      try {
+        await db.execute(
+            "ALTER TABLE vocabularies ADD COLUMN srs_lapses INTEGER DEFAULT 0");
+      } catch (_) {}
+      try {
+        await db.execute(
+            "ALTER TABLE vocabularies ADD COLUMN srs_left INTEGER DEFAULT 0");
+      } catch (_) {}
     }
   }
 
