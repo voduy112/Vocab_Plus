@@ -45,7 +45,7 @@ class _CustomBottomNavState extends State<CustomBottomNav>
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 30, left: 20, right: 20),
+      margin: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -70,7 +70,8 @@ class _CustomBottomNavState extends State<CustomBottomNav>
             _buildNavItem(0, Icons.library_books_outlined, Icons.library_books,
                 'Library'),
             _buildNavItem(1, Icons.folder_outlined, Icons.folder, 'Desks'),
-            _buildNavItem(2, Icons.person_outline, Icons.person, 'Profile'),
+            _buildNavItem(2, Icons.search_outlined, Icons.search, 'Search'),
+            _buildNavItem(3, Icons.person_outline, Icons.person, 'Profile'),
           ],
         ),
       ),
@@ -92,8 +93,8 @@ class _CustomBottomNavState extends State<CustomBottomNav>
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 30 : 12,
-          vertical: isSelected ? 11 : 8,
+          horizontal: isSelected ? 28 : 5,
+          vertical: isSelected ? 7 : 8,
         ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
@@ -102,15 +103,15 @@ class _CustomBottomNavState extends State<CustomBottomNav>
               ? [
                   BoxShadow(
                     color: Colors.blue.shade400.withOpacity(0.6),
-                    blurRadius: 15,
+                    blurRadius: 10,
                     offset: const Offset(-4, 2),
-                    spreadRadius: 2,
+                    spreadRadius: 1,
                   ),
                   BoxShadow(
                     color: Colors.pink.shade300.withOpacity(0.6),
-                    blurRadius: 15,
+                    blurRadius: 10,
                     offset: const Offset(4, 2),
-                    spreadRadius: 2,
+                    spreadRadius: 1,
                   ),
                 ]
               : null,
