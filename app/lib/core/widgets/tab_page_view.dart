@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../features/home/views/home_screen.dart';
 import '../../features/desks/views/desk_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
+import '../../features/search/views/search_screen.dart';
 
 class TabPageView extends StatefulWidget {
   final int currentIndex;
@@ -53,6 +54,7 @@ class _TabPageViewState extends State<TabPageView> {
       children: const [
         HomeScreen(),
         DesksScreen(),
+        SearchScreen(),
         ProfileScreen(),
       ],
     );
