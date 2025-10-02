@@ -32,11 +32,7 @@ class _TabPageViewState extends State<TabPageView> {
   void didUpdateWidget(TabPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.currentIndex != oldWidget.currentIndex) {
-      _pageController.animateToPage(
-        widget.currentIndex,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      _pageController.jumpToPage(widget.currentIndex);
     }
   }
 
