@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/home/views/home_screen.dart';
 import '../../features/desks/views/desk_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
+import '../../features/search/views/search_screen.dart';
+import '../../features/search/views/word_detail_screen.dart';
+import '../../data/dictionary/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/tab_page_view.dart';
 import '../../core/widgets/custom_bottom_nav.dart';
@@ -23,7 +26,8 @@ GoRouter createRouter(AuthController auth) {
                 TabPageView(
                   currentIndex: navigationShell.currentIndex,
                   onPageChanged: (index) {
-                    navigationShell.goBranch(index);
+                    final target = index < 0 ? 0 : (index > 3 ? 3 : index);
+                    navigationShell.goBranch(target, initialLocation: true);
                   },
                 ),
                 Positioned(
@@ -33,7 +37,8 @@ GoRouter createRouter(AuthController auth) {
                   child: CustomBottomNav(
                     selectedIndex: navigationShell.currentIndex,
                     onTap: (index) {
-                      navigationShell.goBranch(index);
+                      final target = index < 0 ? 0 : (index > 3 ? 3 : index);
+                      navigationShell.goBranch(target, initialLocation: true);
                     },
                   ),
                 ),
@@ -59,6 +64,14 @@ GoRouter createRouter(AuthController auth) {
                   const NoTransitionPage(child: DesksScreen()),
             ),
           ]),
+          // Tab 3: Search
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/tabs/search',
+              pageBuilder: (c, s) =>
+                  const NoTransitionPage(child: SearchScreen()),
+            ),
+          ]),
           // Tab 3: Profile/Login
           StatefulShellBranch(routes: [
             GoRoute(
@@ -68,6 +81,13 @@ GoRouter createRouter(AuthController auth) {
             ),
           ]),
         ],
+      ),
+      GoRoute(
+        path: '/word',
+        builder: (context, state) {
+          final entry = state.extra as WordEntry;
+          return WordDetailScreen(entry: entry);
+        },
       ),
     ],
     redirect: (context, state) {
