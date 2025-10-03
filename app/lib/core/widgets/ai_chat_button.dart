@@ -61,7 +61,7 @@ class _AiChatButtonState extends State<AiChatButton>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 120, // Above the navigation bar
+      bottom: 100, // Above the navigation bar
       right: 20,
       child: AnimatedBuilder(
         animation: _animationController,
