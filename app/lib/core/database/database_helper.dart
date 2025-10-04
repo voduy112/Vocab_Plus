@@ -18,7 +18,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'vocab_plus.db');
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -93,6 +93,17 @@ class DatabaseHelper {
         'CREATE INDEX idx_study_sessions_desk_id ON study_sessions(desk_id)');
     await db.execute(
         'CREATE INDEX idx_study_sessions_vocabulary_id ON study_sessions(vocabulary_id)');
+
+    // Tạo bảng search_history
+    await db.execute('''
+      CREATE TABLE search_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        query TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX idx_search_history_created_at ON search_history(created_at DESC)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -158,6 +169,18 @@ class DatabaseHelper {
         await db.execute(
             "ALTER TABLE vocabularies ADD COLUMN srs_left INTEGER DEFAULT 0");
       } catch (_) {}
+    }
+    if (oldVersion < 6) {
+      // Create search_history table if not exists when upgrading
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS search_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          query TEXT NOT NULL UNIQUE,
+          created_at INTEGER NOT NULL
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_search_history_created_at ON search_history(created_at DESC)');
     }
   }
 
