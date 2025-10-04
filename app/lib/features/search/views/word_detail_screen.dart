@@ -22,10 +22,27 @@ class WordDetailScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text(entry.word),
-          bottom: const TabBar(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.blue.shade400,
+                  Colors.pink.shade200,
+                ],
+              ),
+            ),
+          ),
+          bottom: TabBar(
             tabAlignment: TabAlignment.start,
             isScrollable: true,
-            tabs: [
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: const [
               Tab(text: 'ANH - VIỆT'),
               Tab(text: 'ANH - ANH'),
               Tab(text: 'ĐỒNG NGHĨA'),
@@ -52,12 +69,48 @@ class WordDetailScreen extends StatelessWidget {
                   final grouped = ctrl.groupedByPos.isEmpty
                       ? _groupByPos([entry])
                       : ctrl.groupedByPos;
-                  return TabBarView(
+                  final posKeys = grouped.keys.toList()..sort();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _GroupedSensesTab(groups: grouped, viFirst: true),
-                      _GroupedSensesTab(groups: grouped, viFirst: false),
-                      _SynonymsTab(senses: entry.senses),
-                      _AntonymsTab(senses: entry.senses),
+                      if (posKeys.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final p in posKeys)
+                                Chip(
+                                  label: Text(p.toUpperCase()),
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 6),
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -4, vertical: -4),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  backgroundColor: Colors.blue.shade50,
+                                  side: BorderSide(color: Colors.blue.shade200),
+                                  labelStyle: TextStyle(
+                                    color: Colors.blue.shade800,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            _GroupedSensesTab(groups: grouped, viFirst: true),
+                            _GroupedSensesTab(groups: grouped, viFirst: false),
+                            _SynonymsTab(senses: entry.senses),
+                            _AntonymsTab(senses: entry.senses),
+                          ],
+                        ),
+                      ),
                     ],
                   );
                 }),
@@ -188,12 +241,18 @@ class _GroupedSensesTab extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  pos,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                child: Row(
+                  children: [
+                    Icon(Icons.play_arrow,
+                        size: 20, color: Colors.blue.shade700),
+                    SizedBox(width: 8),
+                    Text(
+                      '${pos.toUpperCase()}:',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.w900),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
