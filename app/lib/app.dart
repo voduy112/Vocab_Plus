@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/auth_controller.dart';
 import 'router/app_router.dart';
+import 'data/dictionary/dictionary_repository.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -10,6 +11,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider<DictionaryRepository>(create: (_) => DictionaryRepository()),
         ChangeNotifierProvider(create: (_) => AuthController()..listenAuth()),
       ],
       child: Builder(
