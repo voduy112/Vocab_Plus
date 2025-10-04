@@ -6,6 +6,7 @@ class Search extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onClear;
+  final VoidCallback? onTap;
   final String? hintText;
   final bool autofocus;
   final TextInputAction textInputAction;
@@ -17,6 +18,7 @@ class Search extends StatelessWidget {
     this.onChanged,
     this.onSubmitted,
     this.onClear,
+    this.onTap,
     this.hintText,
     this.autofocus = false,
     this.textInputAction = TextInputAction.search,
@@ -31,6 +33,7 @@ class Search extends StatelessWidget {
       focusNode: focusNode,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
+      onTap: onTap,
       autofocus: autofocus,
       textInputAction: textInputAction,
       decoration: InputDecoration(
