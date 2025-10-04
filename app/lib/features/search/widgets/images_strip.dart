@@ -8,7 +8,7 @@ class ImagesStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     if (entry.images.length <= 1) return const SizedBox.shrink();
     return SizedBox(
-      height: 80,
+      height: 140,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -19,15 +19,15 @@ class ImagesStrip extends StatelessWidget {
           final local = im.local;
           if (local == null) return const SizedBox.shrink();
           return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             child: Image.asset(
               'lib/core/assets/dictionary/$local',
-              width: 120,
-              height: 80,
+              width: 220,
+              height: 140,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
-                width: 120,
-                height: 80,
+                width: 220,
+                height: 140,
                 color: Colors.grey.shade200,
               ),
             ),
