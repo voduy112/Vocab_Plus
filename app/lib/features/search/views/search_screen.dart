@@ -145,37 +145,40 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   );
                 }
-                return ListView.separated(
-                  itemCount: recent.length + 1,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return ListTile(
-                        title: const Text('Tìm kiếm gần đây'),
-                        trailing: TextButton(
-                          onPressed: () => context
-                              .read<app_search.SearchController>()
-                              .clearRecent(),
-                          child: const Text('Xoá tất cả'),
-                        ),
-                      );
-                    }
-                    final q = recent[index - 1];
-                    return ListTile(
-                      leading: const Icon(Icons.history),
-                      title: Text(q),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.close),
+                return ListView(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                      title: const Text('Tìm kiếm gần đây'),
+                      trailing: TextButton(
                         onPressed: () => context
                             .read<app_search.SearchController>()
-                            .removeRecent(q),
+                            .clearRecent(),
+                        child: const Text('Xoá tất cả'),
                       ),
-                      onTap: () {
-                        ctrl.textController.text = q;
-                        ctrl.onChanged(q);
-                      },
-                    );
-                  },
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final q in recent)
+                          InputChip(
+                            avatar: const Icon(Icons.history, size: 18),
+                            label: Text(q),
+                            onPressed: () {
+                              ctrl.textController.text = q;
+                              ctrl.onChanged(q);
+                            },
+                            onDeleted: () => context
+                                .read<app_search.SearchController>()
+                                .removeRecent(q),
+                          ),
+                      ],
+                    ),
+                  ],
                 );
               }
               return ListView.separated(
@@ -195,9 +198,23 @@ class _SearchScreenState extends State<SearchScreen> {
                     title: Text(w.word),
                     subtitle: subtitle == null ? null : Text(subtitle),
                     leading: !(w.pos == null || w.pos!.trim().isEmpty)
-                        ? Padding(
-                            padding: const EdgeInsets.only(right: 0),
-                            child: Text(w.pos!),
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blueGrey.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border:
+                                  Border.all(color: Colors.blueGrey.shade100),
+                            ),
+                            child: Text(
+                              w.pos!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
                           )
                         : null,
                     trailing: Row(
