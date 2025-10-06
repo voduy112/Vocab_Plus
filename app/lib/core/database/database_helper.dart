@@ -47,6 +47,7 @@ class DatabaseHelper {
         pronunciation TEXT,
         example TEXT,
         translation TEXT,
+        hint_text TEXT,
         mastery_level INTEGER DEFAULT 0,
         last_reviewed TEXT,
         next_review TEXT,
@@ -63,6 +64,7 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         is_active INTEGER DEFAULT 1,
+        card_type TEXT DEFAULT 'basis',
         FOREIGN KEY (desk_id) REFERENCES desks (id) ON DELETE CASCADE
       )
     ''');
