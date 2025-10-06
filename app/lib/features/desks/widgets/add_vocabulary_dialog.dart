@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/vocabulary.dart';
+import 'card_forms/basis_card_form.dart';
+import 'card_forms/reverse_card_form.dart';
+import 'card_forms/typing_card_form.dart';
 
 class AddVocabularyDialog extends StatefulWidget {
   final int deskId;
@@ -17,12 +20,18 @@ class AddVocabularyDialog extends StatefulWidget {
 
 class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _wordController = TextEditingController();
-  final _meaningController = TextEditingController();
+  final _frontController = TextEditingController();
+  final _backController = TextEditingController();
   final _pronunciationController = TextEditingController();
   final _exampleController = TextEditingController();
   final _translationController = TextEditingController();
+  final _optAController = TextEditingController();
+  final _optBController = TextEditingController();
+  final _optCController = TextEditingController();
+  final _optDController = TextEditingController();
+  int _correctOptionIndex = 0;
   bool _isEditing = false;
+  CardType _selectedCardType = CardType.basis;
 
   @override
   void initState() {
@@ -30,21 +39,26 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
     _isEditing = widget.vocabulary != null;
     if (_isEditing) {
       final vocab = widget.vocabulary!;
-      _wordController.text = vocab.word;
-      _meaningController.text = vocab.meaning;
+      _frontController.text = vocab.word;
+      _backController.text = vocab.meaning;
       _pronunciationController.text = vocab.pronunciation ?? '';
       _exampleController.text = vocab.example ?? '';
       _translationController.text = vocab.translation ?? '';
+      _selectedCardType = vocab.cardType;
     }
   }
 
   @override
   void dispose() {
-    _wordController.dispose();
-    _meaningController.dispose();
+    _frontController.dispose();
+    _backController.dispose();
     _pronunciationController.dispose();
     _exampleController.dispose();
     _translationController.dispose();
+    _optAController.dispose();
+    _optBController.dispose();
+    _optCController.dispose();
+    _optDController.dispose();
     super.dispose();
   }
 
@@ -58,59 +72,26 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: _wordController,
+              DropdownButtonFormField<CardType>(
+                value: _selectedCardType,
                 decoration: const InputDecoration(
-                  labelText: 'Từ vựng *',
+                  labelText: 'Loại thẻ',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập từ vựng';
-                  }
-                  return null;
+                items: CardType.values
+                    .map((e) => DropdownMenuItem<CardType>(
+                          value: e,
+                          child: Text(
+                            e.toString().split('.').last,
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedCardType = val);
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _meaningController,
-                decoration: const InputDecoration(
-                  labelText: 'Nghĩa *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập nghĩa';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _pronunciationController,
-                decoration: const InputDecoration(
-                  labelText: 'Phiên âm',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _exampleController,
-                decoration: const InputDecoration(
-                  labelText: 'Ví dụ',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _translationController,
-                decoration: const InputDecoration(
-                  labelText: 'Bản dịch ví dụ',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
+              _buildFormByType(),
             ],
           ),
         ),
@@ -127,8 +108,8 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
               final vocabulary = Vocabulary(
                 id: _isEditing ? widget.vocabulary!.id : null,
                 deskId: widget.deskId,
-                word: _wordController.text.trim(),
-                meaning: _meaningController.text.trim(),
+                word: _frontController.text.trim(),
+                meaning: _backController.text.trim(),
                 pronunciation: _pronunciationController.text.trim().isEmpty
                     ? null
                     : _pronunciationController.text.trim(),
@@ -145,6 +126,7 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
                 nextReview: _isEditing ? widget.vocabulary!.nextReview : null,
                 createdAt: _isEditing ? widget.vocabulary!.createdAt : now,
                 updatedAt: now,
+                cardType: _selectedCardType,
               );
               Navigator.of(context).pop(vocabulary);
             }
@@ -153,5 +135,30 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
         ),
       ],
     );
+  }
+
+  Widget _buildFormByType() {
+    switch (_selectedCardType) {
+      case CardType.basis:
+        return BasisCardForm(
+          frontController: _frontController,
+          backController: _backController,
+          pronunciationController: _pronunciationController,
+          exampleController: _exampleController,
+          translationController: _translationController,
+        );
+      case CardType.reverse:
+        return ReverseCardForm(
+          frontController: _frontController,
+          backController: _backController,
+        );
+      case CardType.typing:
+        return TypingCardForm(
+          frontController: _frontController,
+          backController: _backController,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }
