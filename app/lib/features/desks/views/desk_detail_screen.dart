@@ -5,7 +5,7 @@ import '../../../core/services/database_service.dart';
 import '../widgets/stat_card.dart';
 import '../../study_session/views/study_session_screen.dart';
 import '../widgets/vocabulary_card.dart';
-import '../widgets/add_vocabulary_dialog.dart';
+import 'package:go_router/go_router.dart';
 
 class DeskDetailScreen extends StatefulWidget {
   final Desk desk;
@@ -89,59 +89,24 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
   }
 
   Future<void> _addNewVocabulary() async {
-    final result = await showDialog<Vocabulary>(
-      context: context,
-      builder: (context) => AddVocabularyDialog(deskId: widget.desk.id!),
-    );
+    final result =
+        await context.push<bool>('/add-vocabulary', extra: widget.desk);
 
-    if (result != null) {
-      try {
-        await _databaseService.createVocabulary(result);
-        await _loadVocabularies();
-        await _loadDeskStats();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Thêm từ vựng thành công!')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi khi thêm từ vựng: $e')),
-          );
-        }
-      }
+    if (result == true && mounted) {
+      await _loadVocabularies();
+      await _loadDeskStats();
     }
   }
 
   Future<void> _editVocabulary(Vocabulary vocabulary) async {
-    final result = await showDialog<Vocabulary>(
-      context: context,
-      builder: (context) => AddVocabularyDialog(
-        deskId: widget.desk.id!,
-        vocabulary: vocabulary,
-      ),
+    final result = await context.push<bool>(
+      '/edit-vocabulary',
+      extra: {'desk': widget.desk, 'vocabulary': vocabulary},
     );
 
-    if (result != null) {
-      try {
-        await _databaseService.updateVocabulary(result);
-        await _loadVocabularies();
-        await _loadDeskStats();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Cập nhật từ vựng thành công!')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi khi cập nhật từ vựng: $e')),
-          );
-        }
-      }
+    if (result == true && mounted) {
+      await _loadVocabularies();
+      await _loadDeskStats();
     }
   }
 
