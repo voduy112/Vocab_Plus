@@ -1,3 +1,5 @@
+enum CardType { basis, reverse, typing }
+
 class Vocabulary {
   final int? id;
   final int deskId;
@@ -23,6 +25,7 @@ class Vocabulary {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+  final CardType cardType;
 
   Vocabulary({
     this.id,
@@ -47,10 +50,16 @@ class Vocabulary {
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
+    this.cardType = CardType.basis,
   });
 
   // Chuyển đổi từ Map (từ database) sang Vocabulary object
   factory Vocabulary.fromMap(Map<String, dynamic> map) {
+    final String cardTypeRaw = (map['card_type'] ?? 'basis').toString();
+    final CardType parsedCardType = CardType.values.firstWhere(
+      (e) => e.toString().split('.').last == cardTypeRaw,
+      orElse: () => CardType.basis,
+    );
     return Vocabulary(
       id: map['id'],
       deskId: map['desk_id'],
@@ -78,6 +87,7 @@ class Vocabulary {
       createdAt: DateTime.parse(map['created_at']),
       updatedAt: DateTime.parse(map['updated_at']),
       isActive: map['is_active'] == 1,
+      cardType: parsedCardType,
     );
   }
 
@@ -92,7 +102,6 @@ class Vocabulary {
       'example': example,
       'translation': translation,
       'mastery_level': masteryLevel,
-      'review_count': reviewCount,
       'last_reviewed': lastReviewed?.toIso8601String(),
       'next_review': nextReview?.toIso8601String(),
       'srs_ease_factor': srsEaseFactor,
@@ -133,6 +142,7 @@ class Vocabulary {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    CardType? cardType,
   }) {
     return Vocabulary(
       id: id ?? this.id,
@@ -157,6 +167,7 @@ class Vocabulary {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      cardType: cardType ?? this.cardType,
     );
   }
 
@@ -179,7 +190,7 @@ class Vocabulary {
 
   @override
   String toString() {
-    return 'Vocabulary(id: $id, deskId: $deskId, word: $word, meaning: $meaning, masteryLevel: $masteryLevel)';
+    return 'Vocabulary(id: $id, deskId: $deskId, cardType: $cardType, word: $word, meaning: $meaning, masteryLevel: $masteryLevel)';
   }
 
   @override
@@ -207,7 +218,8 @@ class Vocabulary {
         other.srsLeft == srsLeft &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
-        other.isActive == isActive;
+        other.isActive == isActive &&
+        other.cardType == cardType;
   }
 
   @override
@@ -233,6 +245,7 @@ class Vocabulary {
         srsLeft.hashCode ^
         createdAt.hashCode ^
         updatedAt.hashCode ^
-        isActive.hashCode;
+        isActive.hashCode ^
+        cardType.hashCode;
   }
 }
