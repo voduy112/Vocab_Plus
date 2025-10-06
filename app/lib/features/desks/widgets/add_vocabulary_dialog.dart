@@ -25,11 +25,11 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
   final _pronunciationController = TextEditingController();
   final _exampleController = TextEditingController();
   final _translationController = TextEditingController();
+  final _hintTextController = TextEditingController();
   final _optAController = TextEditingController();
   final _optBController = TextEditingController();
   final _optCController = TextEditingController();
   final _optDController = TextEditingController();
-  int _correctOptionIndex = 0;
   bool _isEditing = false;
   CardType _selectedCardType = CardType.basis;
 
@@ -44,6 +44,7 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
       _pronunciationController.text = vocab.pronunciation ?? '';
       _exampleController.text = vocab.example ?? '';
       _translationController.text = vocab.translation ?? '';
+      _hintTextController.text = vocab.hintText ?? '';
       _selectedCardType = vocab.cardType;
     }
   }
@@ -55,6 +56,7 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
     _pronunciationController.dispose();
     _exampleController.dispose();
     _translationController.dispose();
+    _hintTextController.dispose();
     _optAController.dispose();
     _optBController.dispose();
     _optCController.dispose();
@@ -119,6 +121,9 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
                 translation: _translationController.text.trim().isEmpty
                     ? null
                     : _translationController.text.trim(),
+                hintText: _hintTextController.text.trim().isEmpty
+                    ? null
+                    : _hintTextController.text.trim(),
                 masteryLevel: _isEditing ? widget.vocabulary!.masteryLevel : 0,
                 reviewCount: _isEditing ? widget.vocabulary!.reviewCount : 0,
                 lastReviewed:
@@ -156,9 +161,8 @@ class _AddVocabularyDialogState extends State<AddVocabularyDialog> {
         return TypingCardForm(
           frontController: _frontController,
           backController: _backController,
+          hintTextController: _hintTextController,
         );
-      default:
-        return const SizedBox.shrink();
     }
   }
 }
