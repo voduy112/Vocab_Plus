@@ -8,6 +8,7 @@ class Vocabulary {
   final String? pronunciation;
   final String? example;
   final String? translation;
+  final String? hintText;
   final int masteryLevel; // 0-100 (0: chưa học, 100: thuộc lòng)
   final int reviewCount;
   final DateTime? lastReviewed;
@@ -35,6 +36,7 @@ class Vocabulary {
     this.pronunciation,
     this.example,
     this.translation,
+    this.hintText,
     this.masteryLevel = 0,
     this.reviewCount = 0,
     this.lastReviewed,
@@ -68,6 +70,7 @@ class Vocabulary {
       pronunciation: map['pronunciation'],
       example: map['example'],
       translation: map['translation'],
+      hintText: map['hint_text'],
       masteryLevel: map['mastery_level'] ?? 0,
       reviewCount: map['review_count'] ?? 0,
       lastReviewed: map['last_reviewed'] != null
@@ -101,6 +104,7 @@ class Vocabulary {
       'pronunciation': pronunciation,
       'example': example,
       'translation': translation,
+      'hint_text': hintText,
       'mastery_level': masteryLevel,
       'last_reviewed': lastReviewed?.toIso8601String(),
       'next_review': nextReview?.toIso8601String(),
@@ -115,6 +119,7 @@ class Vocabulary {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'is_active': isActive ? 1 : 0,
+      'card_type': cardType.toString().split('.').last,
     };
   }
 
@@ -127,6 +132,7 @@ class Vocabulary {
     String? pronunciation,
     String? example,
     String? translation,
+    String? hintText,
     int? masteryLevel,
     int? reviewCount,
     DateTime? lastReviewed,
@@ -152,6 +158,7 @@ class Vocabulary {
       pronunciation: pronunciation ?? this.pronunciation,
       example: example ?? this.example,
       translation: translation ?? this.translation,
+      hintText: hintText ?? this.hintText,
       masteryLevel: masteryLevel ?? this.masteryLevel,
       reviewCount: reviewCount ?? this.reviewCount,
       lastReviewed: lastReviewed ?? this.lastReviewed,
@@ -204,6 +211,7 @@ class Vocabulary {
         other.pronunciation == pronunciation &&
         other.example == example &&
         other.translation == translation &&
+        other.hintText == hintText &&
         other.masteryLevel == masteryLevel &&
         other.reviewCount == reviewCount &&
         other.lastReviewed == lastReviewed &&
@@ -231,6 +239,7 @@ class Vocabulary {
         pronunciation.hashCode ^
         example.hashCode ^
         translation.hashCode ^
+        hintText.hashCode ^
         masteryLevel.hashCode ^
         reviewCount.hashCode ^
         lastReviewed.hashCode ^
