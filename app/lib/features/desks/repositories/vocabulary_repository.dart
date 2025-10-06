@@ -127,7 +127,6 @@ class VocabularyRepository {
       'srs_due': due?.toIso8601String(),
       'last_reviewed': now,
       'updated_at': now,
-      'review_count': (await _getReviewCount(vocabularyId)) + 1,
     };
     if (srsType != null) updateData['srs_type'] = srsType;
     if (srsQueue != null) updateData['srs_queue'] = srsQueue;
@@ -149,7 +148,6 @@ class VocabularyRepository {
 
     final updateData = {
       'mastery_level': newMasteryLevel,
-      'review_count': await _getReviewCount(vocabularyId) + 1,
       'last_reviewed': now.toIso8601String(),
       'updated_at': now.toIso8601String(),
     };
@@ -166,17 +164,7 @@ class VocabularyRepository {
     );
   }
 
-  // Lấy số lần ôn tập
-  Future<int> _getReviewCount(int vocabularyId) async {
-    final db = await _databaseHelper.database;
-    final result = await db.query(
-      'vocabularies',
-      columns: ['review_count'],
-      where: 'id = ?',
-      whereArgs: [vocabularyId],
-    );
-    return result.isNotEmpty ? result.first['review_count'] as int : 0;
-  }
+  // (removed) _getReviewCount no longer used as review_count may not exist in schema
 
   // Lấy thống kê từ vựng trong desk
   Future<Map<String, dynamic>> getVocabularyStats(int deskId) async {
