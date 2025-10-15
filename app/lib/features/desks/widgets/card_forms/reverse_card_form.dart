@@ -19,10 +19,12 @@ class ReverseCardForm extends StatelessWidget {
           controller: frontController,
           decoration: InputDecoration(
             labelText: 'Mặt trước (front) *',
+            hintText: 'Nhập từ vựng hoặc câu hỏi',
             prefixIcon: const Icon(Icons.swap_horiz),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            helperText: 'Đây sẽ là mặt hiển thị trước khi học',
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
@@ -36,10 +38,12 @@ class ReverseCardForm extends StatelessWidget {
           controller: backController,
           decoration: InputDecoration(
             labelText: 'Mặt sau (back) *',
+            hintText: 'Nhập nghĩa hoặc câu trả lời',
             prefixIcon: const Icon(Icons.swap_horiz),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            helperText: 'Đây sẽ là mặt hiển thị sau khi học',
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
