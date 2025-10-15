@@ -336,14 +336,46 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
           );
         }
       } else {
-        await databaseService.createVocabulary(vocabulary);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã thêm từ vựng thành công!'),
-              backgroundColor: Colors.green,
-            ),
+        if (_selectedCardType == CardType.reverse) {
+          // Tạo 2 thẻ ngược nhau cho Reverse Card
+          await databaseService.createVocabulary(vocabulary);
+          final reversedVocabulary = Vocabulary(
+            id: null,
+            deskId: widget.desk.id!,
+            word: _backController.text.trim(),
+            meaning: _frontController.text.trim(),
+            pronunciation: null,
+            example: null,
+            translation: null,
+            hintText: null,
+            masteryLevel: 0,
+            reviewCount: 0,
+            lastReviewed: null,
+            nextReview: null,
+            createdAt: now,
+            updatedAt: now,
+            isActive: true,
+            cardType: CardType.reverse,
           );
+          await databaseService.createVocabulary(reversedVocabulary);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Đã thêm 2 thẻ Reverse (ngược nhau)!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          await databaseService.createVocabulary(vocabulary);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Đã thêm từ vựng thành công!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
         }
       }
 
