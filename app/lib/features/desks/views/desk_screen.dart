@@ -4,19 +4,15 @@ import '../../../core/models/desk.dart';
 import '../../../core/services/database_service.dart';
 import 'desk_detail_screen.dart';
 import '../widgets/create_desk_dialog.dart';
+import '../widgets/featured_card.dart';
+import '../widgets/deck_table.dart';
+import '../widgets/deck_context_menu.dart';
 
 class DesksScreen extends StatefulWidget {
   const DesksScreen({super.key});
 
   @override
   State<DesksScreen> createState() => _DesksScreenState();
-}
-
-enum DeskSortOption {
-  nameAsc,
-  nameDesc,
-  dateAsc,
-  dateDesc,
 }
 
 class _DesksScreenState extends State<DesksScreen>
@@ -340,7 +336,7 @@ class _DesksScreenState extends State<DesksScreen>
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: _buildFeaturedCard(
+      child: FeaturedCard(
         totalWords: totalWords,
         totalLearned: totalLearned,
         totalNewWords: totalNewWords,
@@ -350,359 +346,16 @@ class _DesksScreenState extends State<DesksScreen>
     );
   }
 
-  Widget _buildFeaturedCard({
-    required int totalWords,
-    required int totalLearned,
-    required int totalNewWords,
-    required int totalDue,
-    required int totalDecks,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.blue.shade400,
-            Colors.pink.shade200,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.library_books,
-                color: Colors.white,
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Overview',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  icon: Icons.book,
-                  label: 'Total Words',
-                  value: totalWords.toString(),
-                  color: Colors.white70,
-                ),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  icon: Icons.check_circle,
-                  label: 'Learned',
-                  value: totalLearned.toString(),
-                  color: Colors.green[200]!,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  icon: Icons.new_releases,
-                  label: 'New Words',
-                  value: totalNewWords.toString(),
-                  color: Colors.blue[200]!,
-                ),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  icon: Icons.schedule,
-                  label: 'Need Review',
-                  value: totalDue.toString(),
-                  color: Colors.orange[200]!,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.folder,
-                  color: Colors.white,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '$totalDecks deck${totalDecks > 1 ? 's' : ''}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildDeckTable() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: InkWell(
-                    onTap: _toggleNameSort,
-                    child: Row(
-                      children: [
-                        Text(
-                          'DECK TITLE',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          _sortOption == DeskSortOption.nameAsc
-                              ? Icons.keyboard_arrow_up
-                              : _sortOption == DeskSortOption.nameDesc
-                                  ? Icons.keyboard_arrow_down
-                                  : Icons.unfold_more,
-                          size: 16,
-                          color: (_sortOption == DeskSortOption.nameAsc ||
-                                  _sortOption == DeskSortOption.nameDesc)
-                              ? Colors.blue[600]
-                              : Colors.grey[400],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'COMPLETE',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'DUE',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Rows
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(),
-            )
-          else if (_filteredDesks.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                children: [
-                  Icon(Icons.folder_open, size: 48, color: Colors.grey[400]),
-                  const SizedBox(height: 12),
-                  Text(
-                    _searchQuery.isEmpty
-                        ? 'No decks found'
-                        : 'Không tìm thấy deck nào',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            ..._filteredDesks.map((desk) => _buildDeckRow(desk)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDeckRow(Desk desk) {
-    final stats = _deskStats[desk.id] ??
-        {
-          'total': 0,
-          'learned': 0,
-          'mastered': 0,
-          'needReview': 0,
-          'avgMastery': 0.0,
-          'progress': 0.0,
-        };
-
-    final int needReview = stats['needReview'] as int;
-    final double progress = stats['progress'] as double;
-    final int total = stats['total'] as int;
-    final int learned = stats['learned'] as int;
-
-    return InkWell(
-      onTap: () => _navigateToDeskDetail(desk),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.grey[200]!, width: 0.5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    desk.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$learned/$total words',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                '${(progress * 100).toStringAsFixed(1)}%',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Text(
-                needReview.toString(),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: needReview > 0 ? Colors.orange[600] : Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight:
-                      needReview > 0 ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return DeckTable(
+      desks: _filteredDesks,
+      deskStats: _deskStats,
+      isLoading: _isLoading,
+      searchQuery: _searchQuery,
+      sortOption: _sortOption,
+      onNameSortToggle: _toggleNameSort,
+      onDeckTap: _navigateToDeskDetail,
+      onDeckLongPress: _showDeckContextMenu,
     );
   }
 
@@ -739,5 +392,92 @@ class _DesksScreenState extends State<DesksScreen>
         builder: (context) => DeskDetailScreen(desk: desk),
       ),
     );
+  }
+
+  void _showDeckContextMenu(Desk desk) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DeckContextMenu(
+        desk: desk,
+        onDelete: () => _deleteDesk(desk),
+      ),
+    );
+  }
+
+  Future<void> _deleteDesk(Desk desk) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa deck'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bạn có chắc chắn muốn xóa deck "${desk.name}"?'),
+            const SizedBox(height: 8),
+            const Text(
+              'Hành động này sẽ xóa deck và tất cả từ vựng bên trong. Không thể hoàn tác.',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _databaseService.deleteDesk(desk.id!);
+        await _loadDesks(forceReload: true);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green[600]),
+                  const SizedBox(width: 8),
+                  Text('Đã xóa deck "${desk.name}" thành công'),
+                ],
+              ),
+              backgroundColor: Colors.green[50],
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red[600]),
+                  const SizedBox(width: 8),
+                  Text('Lỗi khi xóa deck: $e'),
+                ],
+              ),
+              backgroundColor: Colors.red[50],
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
   }
 }
