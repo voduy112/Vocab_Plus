@@ -3,8 +3,10 @@ import '../../../core/models/desk.dart';
 import '../../../core/models/vocabulary.dart';
 import '../../../core/models/study_session.dart';
 import '../../../core/services/database_service.dart';
-import '../widgets/flashcard.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/sessions/basis_card_session.dart';
+import '../widgets/sessions/reverse_card_session.dart';
+import '../widgets/sessions/typing_card_session.dart';
 
 class StudySessionScreen extends StatefulWidget {
   final Desk desk;
@@ -134,15 +136,36 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: Flashcard(
-              vocabulary: v,
-              labels: _labels,
-              onChoiceSelected: _choose,
-              accentColor: color,
-            ),
+            child: _buildSessionByCardType(v, color),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildSessionByCardType(Vocabulary vocabulary, Color color) {
+    switch (vocabulary.cardType) {
+      case CardType.basis:
+        return BasisCardSession(
+          vocabulary: vocabulary,
+          labels: _labels,
+          onChoiceSelected: _choose,
+          accentColor: color,
+        );
+      case CardType.reverse:
+        return ReverseCardSession(
+          vocabulary: vocabulary,
+          labels: _labels,
+          onChoiceSelected: _choose,
+          accentColor: color,
+        );
+      case CardType.typing:
+        return TypingCardSession(
+          vocabulary: vocabulary,
+          labels: _labels,
+          onChoiceSelected: _choose,
+          accentColor: color,
+        );
+    }
   }
 }
