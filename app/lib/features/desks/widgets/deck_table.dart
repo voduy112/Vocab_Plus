@@ -67,7 +67,7 @@ class DeckTable extends StatelessWidget {
                     child: Row(
                       children: [
                         Text(
-                          'DECK TITLE',
+                          'TITLE',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: Colors.grey[700],
@@ -91,28 +91,49 @@ class DeckTable extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 16),
                 Expanded(
-                  flex: 2,
-                  child: Text(
-                    'COMPLETE',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'DUE',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                      fontSize: 12,
-                    ),
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'NEW',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'LEARNED',
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'DUE',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
                   ),
                 ),
               ],
