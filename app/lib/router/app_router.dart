@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/views/home_screen.dart';
 import '../../features/desks/views/desk_screen.dart';
+import '../../features/desks/views/add_vocabulary_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
 import '../../features/search/views/search_screen.dart';
 import '../../features/search/views/word_detail_screen.dart';
@@ -11,6 +12,8 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/tab_page_view.dart';
 import '../../core/widgets/custom_bottom_nav.dart';
 import '../../core/widgets/ai_chat_button.dart';
+import '../../core/models/desk.dart';
+import '../../core/models/vocabulary.dart';
 
 GoRouter createRouter(AuthController auth) {
   return GoRouter(
@@ -87,6 +90,22 @@ GoRouter createRouter(AuthController auth) {
         builder: (context, state) {
           final entry = state.extra as WordEntry;
           return WordDetailScreen(entry: entry);
+        },
+      ),
+      GoRoute(
+        path: '/add-vocabulary',
+        builder: (context, state) {
+          final desk = state.extra as Desk;
+          return AddVocabularyScreen(desk: desk);
+        },
+      ),
+      GoRoute(
+        path: '/edit-vocabulary',
+        builder: (context, state) {
+          final Map<String, dynamic> args = state.extra as Map<String, dynamic>;
+          final desk = args['desk'] as Desk;
+          final vocabulary = args['vocabulary'] as Vocabulary;
+          return AddVocabularyScreen(desk: desk, vocabulary: vocabulary);
         },
       ),
     ],
