@@ -18,9 +18,11 @@ class DeckRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int needReview = stats['needReview'] as int;
-    final double progress = stats['progress'] as double;
     final int total = stats['total'] as int;
     final int learned = stats['learned'] as int;
+    final int newCount = total - learned;
+    final int learnedCount = learned;
+    final int dueCount = needReview;
 
     return GestureDetector(
       onTap: onTap,
@@ -58,27 +60,43 @@ class DeckRow extends StatelessWidget {
               ),
             ),
             Expanded(
-              flex: 2,
-              child: Text(
-                '${(progress * 100).toStringAsFixed(1)}%',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Text(
-                needReview.toString(),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: needReview > 0 ? Colors.orange[600] : Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight:
-                      needReview > 0 ? FontWeight.w600 : FontWeight.normal,
-                ),
+              flex: 3,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      newCount.toString(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.blue[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      learnedCount.toString(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.green[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      dueCount.toString(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.orange[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
