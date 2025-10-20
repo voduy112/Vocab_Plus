@@ -21,27 +21,33 @@ class VocabularyCard extends StatelessWidget {
         onTap: onTap,
         leading: const Icon(Icons.bookmark_outline),
         title: Text(
-          vocabulary.word,
+          vocabulary.front,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(vocabulary.meaning),
-            if (vocabulary.pronunciation != null) ...[
+            Text(vocabulary.back),
+            // Hiển thị pronunciation từ frontExtra nếu có
+            if (vocabulary.frontExtra != null &&
+                vocabulary.frontExtra!.containsKey('pronunciation') &&
+                vocabulary.frontExtra!['pronunciation']!.isNotEmpty) ...[
               const SizedBox(height: 2),
               Text(
-                vocabulary.pronunciation!,
+                vocabulary.frontExtra!['pronunciation']!,
                 style: TextStyle(
                   fontStyle: FontStyle.italic,
                   color: Colors.grey[600],
                 ),
               ),
             ],
-            if (vocabulary.example != null) ...[
+            // Hiển thị example từ frontExtra nếu có
+            if (vocabulary.frontExtra != null &&
+                vocabulary.frontExtra!.containsKey('example') &&
+                vocabulary.frontExtra!['example']!.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
-                vocabulary.example!,
+                vocabulary.frontExtra!['example']!,
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[700],
