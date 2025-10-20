@@ -3,12 +3,17 @@ enum CardType { basis, reverse, typing }
 class Vocabulary {
   final int? id;
   final int deskId;
-  final String word;
-  final String meaning;
-  final String? pronunciation;
-  final String? example;
-  final String? translation;
-  final String? hintText;
+  final String front;
+  final String back;
+  // Image fields
+  final String? imageUrl; // remote url (e.g., Pixabay)
+  final String? imagePath; // local cached file path
+  // Back side images (optional). For backward compatibility, front side uses imageUrl/imagePath
+  final String? backImageUrl;
+  final String? backImagePath;
+  // Extra dynamic fields per face (key -> value)
+  final Map<String, String>? frontExtra;
+  final Map<String, String>? backExtra;
   final int masteryLevel; // 0-100 (0: chưa học, 100: thuộc lòng)
   final int reviewCount;
   final DateTime? lastReviewed;
@@ -31,12 +36,14 @@ class Vocabulary {
   Vocabulary({
     this.id,
     required this.deskId,
-    required this.word,
-    required this.meaning,
-    this.pronunciation,
-    this.example,
-    this.translation,
-    this.hintText,
+    required this.front,
+    required this.back,
+    this.imageUrl,
+    this.imagePath,
+    this.backImageUrl,
+    this.backImagePath,
+    this.frontExtra,
+    this.backExtra,
     this.masteryLevel = 0,
     this.reviewCount = 0,
     this.lastReviewed,
@@ -65,12 +72,30 @@ class Vocabulary {
     return Vocabulary(
       id: map['id'],
       deskId: map['desk_id'],
-      word: map['word'],
-      meaning: map['meaning'],
-      pronunciation: map['pronunciation'],
-      example: map['example'],
-      translation: map['translation'],
-      hintText: map['hint_text'],
+      front: map['front'],
+      back: map['back'],
+      imageUrl: map['image_url'],
+      imagePath: map['image_path'],
+      backImageUrl: map['back_image_url'],
+      backImagePath: map['back_image_path'],
+      frontExtra: map['front_extra_json'] != null &&
+              (map['front_extra_json'] as String).isNotEmpty
+          ? {
+              for (final pair in (map['front_extra_json'] as String)
+                  .split('||')
+                  .where((e) => e.contains('=')))
+                pair.split('=')[0]: pair.split('=')[1]
+            }
+          : null,
+      backExtra: map['back_extra_json'] != null &&
+              (map['back_extra_json'] as String).isNotEmpty
+          ? {
+              for (final pair in (map['back_extra_json'] as String)
+                  .split('||')
+                  .where((e) => e.contains('=')))
+                pair.split('=')[0]: pair.split('=')[1]
+            }
+          : null,
       masteryLevel: map['mastery_level'] ?? 0,
       reviewCount: map['review_count'] ?? 0,
       lastReviewed: map['last_reviewed'] != null
@@ -99,12 +124,18 @@ class Vocabulary {
     return {
       'id': id,
       'desk_id': deskId,
-      'word': word,
-      'meaning': meaning,
-      'pronunciation': pronunciation,
-      'example': example,
-      'translation': translation,
-      'hint_text': hintText,
+      'front': front,
+      'back': back,
+      'image_url': imageUrl,
+      'image_path': imagePath,
+      'back_image_url': backImageUrl,
+      'back_image_path': backImagePath,
+      'front_extra_json': frontExtra == null
+          ? null
+          : frontExtra!.entries.map((e) => '${e.key}=${e.value}').join('||'),
+      'back_extra_json': backExtra == null
+          ? null
+          : backExtra!.entries.map((e) => '${e.key}=${e.value}').join('||'),
       'mastery_level': masteryLevel,
       'last_reviewed': lastReviewed?.toIso8601String(),
       'next_review': nextReview?.toIso8601String(),
@@ -127,12 +158,14 @@ class Vocabulary {
   Vocabulary copyWith({
     int? id,
     int? deskId,
-    String? word,
-    String? meaning,
-    String? pronunciation,
-    String? example,
-    String? translation,
-    String? hintText,
+    String? front,
+    String? back,
+    String? imageUrl,
+    String? imagePath,
+    String? backImageUrl,
+    String? backImagePath,
+    Map<String, String>? frontExtra,
+    Map<String, String>? backExtra,
     int? masteryLevel,
     int? reviewCount,
     DateTime? lastReviewed,
@@ -153,12 +186,14 @@ class Vocabulary {
     return Vocabulary(
       id: id ?? this.id,
       deskId: deskId ?? this.deskId,
-      word: word ?? this.word,
-      meaning: meaning ?? this.meaning,
-      pronunciation: pronunciation ?? this.pronunciation,
-      example: example ?? this.example,
-      translation: translation ?? this.translation,
-      hintText: hintText ?? this.hintText,
+      front: front ?? this.front,
+      back: back ?? this.back,
+      imageUrl: imageUrl ?? this.imageUrl,
+      imagePath: imagePath ?? this.imagePath,
+      backImageUrl: backImageUrl ?? this.backImageUrl,
+      backImagePath: backImagePath ?? this.backImagePath,
+      frontExtra: frontExtra ?? this.frontExtra,
+      backExtra: backExtra ?? this.backExtra,
       masteryLevel: masteryLevel ?? this.masteryLevel,
       reviewCount: reviewCount ?? this.reviewCount,
       lastReviewed: lastReviewed ?? this.lastReviewed,
@@ -197,7 +232,7 @@ class Vocabulary {
 
   @override
   String toString() {
-    return 'Vocabulary(id: $id, deskId: $deskId, cardType: $cardType, word: $word, meaning: $meaning, masteryLevel: $masteryLevel)';
+    return 'Vocabulary(id: $id, deskId: $deskId, cardType: $cardType, front: $front, back: $back, masteryLevel: $masteryLevel)';
   }
 
   @override
@@ -206,12 +241,8 @@ class Vocabulary {
     return other is Vocabulary &&
         other.id == id &&
         other.deskId == deskId &&
-        other.word == word &&
-        other.meaning == meaning &&
-        other.pronunciation == pronunciation &&
-        other.example == example &&
-        other.translation == translation &&
-        other.hintText == hintText &&
+        other.front == front &&
+        other.back == back &&
         other.masteryLevel == masteryLevel &&
         other.reviewCount == reviewCount &&
         other.lastReviewed == lastReviewed &&
@@ -234,12 +265,8 @@ class Vocabulary {
   int get hashCode {
     return id.hashCode ^
         deskId.hashCode ^
-        word.hashCode ^
-        meaning.hashCode ^
-        pronunciation.hashCode ^
-        example.hashCode ^
-        translation.hashCode ^
-        hintText.hashCode ^
+        front.hashCode ^
+        back.hashCode ^
         masteryLevel.hashCode ^
         reviewCount.hashCode ^
         lastReviewed.hashCode ^
