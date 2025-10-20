@@ -81,8 +81,8 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
       } else {
         _filteredVocabularies = _vocabularies
             .where((vocab) =>
-                vocab.word.toLowerCase().contains(query.toLowerCase()) ||
-                vocab.meaning.toLowerCase().contains(query.toLowerCase()))
+                vocab.front.toLowerCase().contains(query.toLowerCase()) ||
+                vocab.back.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -115,7 +115,7 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Xóa từ vựng'),
-        content: Text('Bạn có chắc chắn muốn xóa từ "${vocabulary.word}"?'),
+        content: Text('Bạn có chắc chắn muốn xóa từ "${vocabulary.front}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
