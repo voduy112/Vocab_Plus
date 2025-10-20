@@ -18,7 +18,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'vocab_plus.db');
     return await openDatabase(
       path,
-      version: 6,
+      version: 1,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -42,12 +42,14 @@ class DatabaseHelper {
       CREATE TABLE vocabularies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         desk_id INTEGER NOT NULL,
-        word TEXT NOT NULL,
-        meaning TEXT NOT NULL,
-        pronunciation TEXT,
-        example TEXT,
-        translation TEXT,
-        hint_text TEXT,
+        front TEXT NOT NULL,
+        back TEXT NOT NULL,
+        image_url TEXT,
+        image_path TEXT,
+        back_image_url TEXT,
+        back_image_path TEXT,
+        front_extra_json TEXT,
+        back_extra_json TEXT,
         mastery_level INTEGER DEFAULT 0,
         last_reviewed TEXT,
         next_review TEXT,
@@ -109,81 +111,7 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 3) {
-      // Add SRS columns to vocabularies
-      try {
-        await db.execute(
-            "ALTER TABLE vocabularies ADD COLUMN srs_ease_factor REAL DEFAULT 2.5");
-      } catch (_) {}
-      try {
-        await db.execute(
-            "ALTER TABLE vocabularies ADD COLUMN srs_interval INTEGER DEFAULT 0");
-      } catch (_) {}
-      try {
-        await db.execute(
-            "ALTER TABLE vocabularies ADD COLUMN srs_repetitions INTEGER DEFAULT 0");
-      } catch (_) {}
-      try {
-        await db.execute("ALTER TABLE vocabularies ADD COLUMN srs_due TEXT");
-      } catch (_) {}
-      try {
-        await db.execute(
-            'CREATE INDEX idx_vocabularies_srs_due ON vocabularies(srs_due)');
-      } catch (_) {}
-    }
-    if (oldVersion < 4) {
-      // Remove description column from desks by recreating the table
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS desks_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          color TEXT DEFAULT '#2196F3',
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          is_active INTEGER DEFAULT 1
-        )
-      ''');
-      // Copy data from old table (skip description)
-      try {
-        await db.execute('''
-          INSERT INTO desks_new (id, name, color, created_at, updated_at, is_active)
-          SELECT id, name, color, created_at, updated_at, is_active FROM desks
-        ''');
-      } catch (_) {}
-      await db.execute('DROP TABLE IF EXISTS desks');
-      await db.execute('ALTER TABLE desks_new RENAME TO desks');
-    }
-    if (oldVersion < 5) {
-      // Add Anki-like scheduler columns to vocabularies
-      try {
-        await db.execute(
-            "ALTER TABLE vocabularies ADD COLUMN srs_type INTEGER DEFAULT 0");
-      } catch (_) {}
-      try {
-        await db.execute(
-            "ALTER TABLE vocabularies ADD COLUMN srs_queue INTEGER DEFAULT 0");
-      } catch (_) {}
-      try {
-        await db.execute(
-            "ALTER TABLE vocabularies ADD COLUMN srs_lapses INTEGER DEFAULT 0");
-      } catch (_) {}
-      try {
-        await db.execute(
-            "ALTER TABLE vocabularies ADD COLUMN srs_left INTEGER DEFAULT 0");
-      } catch (_) {}
-    }
-    if (oldVersion < 6) {
-      // Create search_history table if not exists when upgrading
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS search_history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          query TEXT NOT NULL UNIQUE,
-          created_at INTEGER NOT NULL
-        )
-      ''');
-      await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_search_history_created_at ON search_history(created_at DESC)');
-    }
+    // No upgrades needed - all fields are in CREATE TABLE from the start
   }
 
   // Đóng database
