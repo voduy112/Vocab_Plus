@@ -3,9 +3,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/desk.dart';
 import '../../../core/models/vocabulary.dart';
 import '../../../core/services/database_service.dart';
+// removed local image picking imports; handled inside widget
 import '../widgets/card_forms/basis_card_form.dart';
 import '../widgets/card_forms/reverse_card_form.dart';
 import '../widgets/card_forms/typing_card_form.dart';
+import '../widgets/card_forms/dynamic_card_form.dart';
+// removed dio import; handled inside widget
+import '../widgets/image_picker_field.dart';
 
 class AddVocabularyScreen extends StatefulWidget {
   final Desk desk;
@@ -25,13 +29,15 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   final _formKey = GlobalKey<FormState>();
   final _frontController = TextEditingController();
   final _backController = TextEditingController();
-  final _pronunciationController = TextEditingController();
-  final _exampleController = TextEditingController();
-  final _translationController = TextEditingController();
-  final _hintTextController = TextEditingController();
   bool _isEditing = false;
   CardType _selectedCardType = CardType.basis;
   bool _isLoading = false;
+  String? _frontImagePath;
+  String? _frontImageUrl;
+  String? _backImagePath;
+  String? _backImageUrl;
+  bool _pickForFront = true; // chọn mặt để thêm ảnh
+  DynamicFormState? _dynamicState;
 
   @override
   void initState() {
@@ -39,13 +45,39 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
     _isEditing = widget.vocabulary != null;
     if (_isEditing) {
       final vocab = widget.vocabulary!;
-      _frontController.text = vocab.word;
-      _backController.text = vocab.meaning;
-      _pronunciationController.text = vocab.pronunciation ?? '';
-      _exampleController.text = vocab.example ?? '';
-      _translationController.text = vocab.translation ?? '';
-      _hintTextController.text = vocab.hintText ?? '';
+      _frontController.text = vocab.front;
+      _backController.text = vocab.back;
       _selectedCardType = vocab.cardType;
+      _frontImagePath = vocab.imagePath;
+      _frontImageUrl = vocab.imageUrl;
+      _backImagePath = vocab.backImagePath;
+      _backImageUrl = vocab.backImageUrl;
+
+      // Initialize dynamic state with existing data
+      if (vocab.frontExtra != null || vocab.backExtra != null) {
+        _dynamicState = DynamicFormState(
+          frontFields: vocab.frontExtra?.keys
+                  .map((key) => DynamicField(
+                        id: key,
+                        label: _getFieldLabel(key),
+                        hint: _getFieldHint(key),
+                        icon: _getFieldIcon(key),
+                      ))
+                  .toList() ??
+              [],
+          backFields: vocab.backExtra?.keys
+                  .map((key) => DynamicField(
+                        id: key,
+                        label: _getFieldLabel(key),
+                        hint: _getFieldHint(key),
+                        icon: _getFieldIcon(key),
+                      ))
+                  .toList() ??
+              [],
+          frontValues: vocab.frontExtra ?? {},
+          backValues: vocab.backExtra ?? {},
+        );
+      }
     }
   }
 
@@ -53,11 +85,46 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   void dispose() {
     _frontController.dispose();
     _backController.dispose();
-    _pronunciationController.dispose();
-    _exampleController.dispose();
-    _translationController.dispose();
-    _hintTextController.dispose();
     super.dispose();
+  }
+
+  String _getFieldLabel(String key) {
+    switch (key) {
+      case 'pronunciation':
+        return 'Phiên âm';
+      case 'example':
+        return 'Ví dụ';
+      case 'translation':
+        return 'Bản dịch ví dụ';
+      default:
+        return key;
+    }
+  }
+
+  String _getFieldHint(String key) {
+    switch (key) {
+      case 'pronunciation':
+        return 'Nhập phiên âm của từ';
+      case 'example':
+        return 'Nhập câu ví dụ';
+      case 'translation':
+        return 'Nhập bản dịch của ví dụ';
+      default:
+        return 'Nhập thông tin';
+    }
+  }
+
+  IconData _getFieldIcon(String key) {
+    switch (key) {
+      case 'pronunciation':
+        return Icons.record_voice_over;
+      case 'example':
+        return Icons.format_quote;
+      case 'translation':
+        return Icons.translate;
+      default:
+        return Icons.text_fields;
+    }
   }
 
   @override
@@ -255,6 +322,60 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
                       ),
                       const SizedBox(height: 16),
                       _buildFormByType(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Thêm ảnh cho',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Mặt trước'),
+                            selected: _pickForFront,
+                            onSelected: (v) {
+                              if (!v) return;
+                              setState(() => _pickForFront = true);
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Mặt sau'),
+                            selected: !_pickForFront,
+                            onSelected: (v) {
+                              if (!v) return;
+                              setState(() => _pickForFront = false);
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      VocabularyImagePicker(
+                        key: ValueKey(_pickForFront),
+                        title: 'Ảnh (tuỳ chọn)',
+                        initialImageUrl:
+                            _pickForFront ? _frontImageUrl : _backImageUrl,
+                        initialImagePath:
+                            _pickForFront ? _frontImagePath : _backImagePath,
+                        suggestQuery: _pickForFront
+                            ? _frontController.text.trim()
+                            : _backController.text.trim(),
+                        onChanged: (value) {
+                          setState(() {
+                            if (_pickForFront) {
+                              _frontImageUrl = value.$1;
+                              _frontImagePath = value.$2;
+                            } else {
+                              _backImageUrl = value.$1;
+                              _backImagePath = value.$2;
+                            }
+                          });
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -272,20 +393,35 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         return BasisCardForm(
           frontController: _frontController,
           backController: _backController,
-          pronunciationController: _pronunciationController,
-          exampleController: _exampleController,
-          translationController: _translationController,
+          pronunciationController: TextEditingController(),
+          exampleController: TextEditingController(),
+          translationController: TextEditingController(),
+          initialFrontExtra: _isEditing ? widget.vocabulary!.frontExtra : null,
+          initialBackExtra: _isEditing ? widget.vocabulary!.backExtra : null,
+          onChanged: (state) {
+            setState(() => _dynamicState = state);
+          },
         );
       case CardType.reverse:
         return ReverseCardForm(
           frontController: _frontController,
           backController: _backController,
+          initialFrontExtra: _isEditing ? widget.vocabulary!.frontExtra : null,
+          initialBackExtra: _isEditing ? widget.vocabulary!.backExtra : null,
+          onChanged: (state) {
+            setState(() => _dynamicState = state);
+          },
         );
       case CardType.typing:
         return TypingCardForm(
           frontController: _frontController,
           backController: _backController,
-          hintTextController: _hintTextController,
+          hintTextController: TextEditingController(),
+          initialFrontExtra: _isEditing ? widget.vocabulary!.frontExtra : null,
+          initialBackExtra: _isEditing ? widget.vocabulary!.backExtra : null,
+          onChanged: (state) {
+            setState(() => _dynamicState = state);
+          },
         );
     }
   }
@@ -297,23 +433,12 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
 
     try {
       final now = DateTime.now();
+
       final vocabulary = Vocabulary(
         id: _isEditing ? widget.vocabulary!.id : null,
         deskId: widget.desk.id!,
-        word: _frontController.text.trim(),
-        meaning: _backController.text.trim(),
-        pronunciation: _pronunciationController.text.trim().isEmpty
-            ? null
-            : _pronunciationController.text.trim(),
-        example: _exampleController.text.trim().isEmpty
-            ? null
-            : _exampleController.text.trim(),
-        translation: _translationController.text.trim().isEmpty
-            ? null
-            : _translationController.text.trim(),
-        hintText: _hintTextController.text.trim().isEmpty
-            ? null
-            : _hintTextController.text.trim(),
+        front: _frontController.text.trim(),
+        back: _backController.text.trim(),
         masteryLevel: _isEditing ? widget.vocabulary!.masteryLevel : 0,
         reviewCount: _isEditing ? widget.vocabulary!.reviewCount : 0,
         lastReviewed: _isEditing ? widget.vocabulary!.lastReviewed : null,
@@ -321,8 +446,14 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         createdAt: _isEditing ? widget.vocabulary!.createdAt : now,
         updatedAt: now,
         cardType: _selectedCardType,
+        imageUrl: _frontImageUrl,
+        imagePath: _frontImagePath,
+        backImageUrl: _backImageUrl,
+        backImagePath: _backImagePath,
+        frontExtra: _dynamicState?.frontValues,
+        backExtra: _dynamicState?.backValues,
       );
-
+      print('vocabulary: ${vocabulary.toString()}');
       final databaseService = DatabaseService();
 
       if (_isEditing) {
@@ -339,15 +470,12 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         if (_selectedCardType == CardType.reverse) {
           // Tạo 2 thẻ ngược nhau cho Reverse Card
           await databaseService.createVocabulary(vocabulary);
+
           final reversedVocabulary = Vocabulary(
             id: null,
             deskId: widget.desk.id!,
-            word: _backController.text.trim(),
-            meaning: _frontController.text.trim(),
-            pronunciation: null,
-            example: null,
-            translation: null,
-            hintText: null,
+            front: _backController.text.trim(),
+            back: _frontController.text.trim(),
             masteryLevel: 0,
             reviewCount: 0,
             lastReviewed: null,
@@ -356,8 +484,21 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
             updatedAt: now,
             isActive: true,
             cardType: CardType.reverse,
+            imageUrl: _backImageUrl,
+            imagePath: _backImagePath,
+            backImageUrl: _frontImageUrl,
+            backImagePath: _frontImagePath,
+            frontExtra: _dynamicState?.backValues,
+            backExtra: _dynamicState?.frontValues,
           );
+          print('vocabulary: ${vocabulary.toString()}');
+          print('reversedVocabulary: ${reversedVocabulary.toString()}');
+          print('dynamicState: ${_dynamicState?.toString()}');
+          print('dynamicState frontValues: ${_dynamicState?.frontValues}');
+          print('dynamicState backValues: ${_dynamicState?.backValues}');
+
           await databaseService.createVocabulary(reversedVocabulary);
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
