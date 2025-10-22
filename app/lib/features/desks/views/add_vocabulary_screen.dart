@@ -29,6 +29,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   final _formKey = GlobalKey<FormState>();
   final _frontController = TextEditingController();
   final _backController = TextEditingController();
+  final _hintTextController = TextEditingController();
   bool _isEditing = false;
   CardType _selectedCardType = CardType.basis;
   bool _isLoading = false;
@@ -52,6 +53,12 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
       _frontImageUrl = vocab.imageUrl;
       _backImagePath = vocab.backImagePath;
       _backImageUrl = vocab.backImageUrl;
+
+      // Initialize hint text controller
+      if (vocab.backExtra != null &&
+          vocab.backExtra!.containsKey('hint_text')) {
+        _hintTextController.text = vocab.backExtra!['hint_text']!;
+      }
 
       // Initialize dynamic state with existing data
       if (vocab.frontExtra != null || vocab.backExtra != null) {
@@ -85,6 +92,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   void dispose() {
     _frontController.dispose();
     _backController.dispose();
+    _hintTextController.dispose();
     super.dispose();
   }
 
@@ -96,6 +104,8 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         return 'Ví dụ';
       case 'translation':
         return 'Bản dịch ví dụ';
+      case 'hint_text':
+        return 'Gợi ý';
       default:
         return key;
     }
@@ -109,6 +119,8 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         return 'Nhập câu ví dụ';
       case 'translation':
         return 'Nhập bản dịch của ví dụ';
+      case 'hint_text':
+        return 'Nhập gợi ý cho người học';
       default:
         return 'Nhập thông tin';
     }
@@ -122,6 +134,8 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         return Icons.format_quote;
       case 'translation':
         return Icons.translate;
+      case 'hint_text':
+        return Icons.lightbulb_outline;
       default:
         return Icons.text_fields;
     }
@@ -416,7 +430,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         return TypingCardForm(
           frontController: _frontController,
           backController: _backController,
-          hintTextController: TextEditingController(),
+          hintTextController: _hintTextController,
           initialFrontExtra: _isEditing ? widget.vocabulary!.frontExtra : null,
           initialBackExtra: _isEditing ? widget.vocabulary!.backExtra : null,
           onChanged: (state) {
