@@ -1,12 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/models/vocabulary.dart';
 import '../../../../core/services/database_service.dart';
-import '../choice_buttons.dart';
 
 class BasisCardSession extends StatefulWidget {
   final Vocabulary vocabulary;
   final Map<SrsChoice, String> labels;
   final Function(SrsChoice) onChoiceSelected;
+  final Function(bool)? onAnswerShown;
   final Color? accentColor;
 
   const BasisCardSession({
@@ -14,6 +15,7 @@ class BasisCardSession extends StatefulWidget {
     required this.vocabulary,
     required this.labels,
     required this.onChoiceSelected,
+    this.onAnswerShown,
     this.accentColor,
   });
 
@@ -31,7 +33,7 @@ class _BasisCardSessionState extends State<BasisCardSession>
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
     _animation = Tween<double>(
@@ -47,6 +49,19 @@ class _BasisCardSessionState extends State<BasisCardSession>
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  String _getFieldLabel(String key) {
+    switch (key) {
+      case 'pronunciation':
+        return 'Phiên âm';
+      case 'example':
+        return 'Ví dụ';
+      case 'translation':
+        return 'Bản dịch ví dụ';
+      default:
+        return key;
+    }
   }
 
   @override
@@ -66,17 +81,37 @@ class _BasisCardSessionState extends State<BasisCardSession>
     if (!_isShowingAnswer) {
       setState(() => _isShowingAnswer = true);
       _animationController.forward();
+      widget.onAnswerShown?.call(true);
+    } else {
+      setState(() => _isShowingAnswer = false);
+      _animationController.reverse();
+      widget.onAnswerShown?.call(false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _isShowingAnswer ? null : _showAnswer,
+      onTap: _showAnswer,
       child: AnimatedBuilder(
         animation: _animation,
         builder: (context, child) {
-          return _isShowingAnswer ? _buildAnswer() : _buildQuestion();
+          final isFlipped = _animation.value >= 0.5;
+          final flipValue = _animation.value;
+
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.001)
+              ..rotateY(flipValue * 3.14159),
+            child: isFlipped
+                ? Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()..rotateY(3.14159),
+                    child: _buildAnswer(),
+                  )
+                : _buildQuestion(),
+          );
         },
       ),
     );
@@ -87,9 +122,48 @@ class _BasisCardSessionState extends State<BasisCardSession>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Ảnh mặt trước (nếu có)
+          if (widget.vocabulary.imageUrl != null ||
+              widget.vocabulary.imagePath != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: widget.vocabulary.imagePath != null
+                    ? Image.file(
+                        File(widget.vocabulary.imagePath!),
+                        height: 120,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            width: 200,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      )
+                    : Image.network(
+                        widget.vocabulary.imageUrl!,
+                        height: 120,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            width: 200,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      ),
+              ),
+            ),
+
           // Từ vựng chính
           Text(
-            widget.vocabulary.word,
+            widget.vocabulary.front,
             style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.bold,
@@ -98,25 +172,28 @@ class _BasisCardSessionState extends State<BasisCardSession>
             textAlign: TextAlign.center,
           ),
 
-          // Phiên âm
-          if (widget.vocabulary.pronunciation != null &&
-              widget.vocabulary.pronunciation!.isNotEmpty) ...[
+          // Dynamic front fields
+          if (widget.vocabulary.frontExtra != null &&
+              widget.vocabulary.frontExtra!.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                widget.vocabulary.pronunciation!,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
+            ...widget.vocabulary.frontExtra!.entries.map((e) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_getFieldLabel(e.key)}: ${e.value}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )),
           ],
 
           const SizedBox(height: 32),
@@ -147,6 +224,43 @@ class _BasisCardSessionState extends State<BasisCardSession>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Ảnh mặt sau (nếu có)
+          if (widget.vocabulary.backImageUrl != null ||
+              widget.vocabulary.backImagePath != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: widget.vocabulary.backImagePath != null
+                    ? Image.file(
+                        File(widget.vocabulary.backImagePath!),
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      )
+                    : Image.network(
+                        widget.vocabulary.backImageUrl!,
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      ),
+              ),
+            ),
+
           // Nghĩa chính
           Container(
             width: double.infinity,
@@ -156,7 +270,7 @@ class _BasisCardSessionState extends State<BasisCardSession>
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              widget.vocabulary.meaning,
+              widget.vocabulary.back,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
@@ -167,64 +281,48 @@ class _BasisCardSessionState extends State<BasisCardSession>
 
           const SizedBox(height: 20),
 
-          // Ví dụ
-          if (widget.vocabulary.example != null &&
-              widget.vocabulary.example!.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Ví dụ:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white70,
+          // Dynamic back fields
+          if (widget.vocabulary.backExtra != null &&
+              widget.vocabulary.backExtra!.isNotEmpty) ...[
+            ...widget.vocabulary.backExtra!.entries.map((e) => Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.vocabulary.example!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  if (widget.vocabulary.translation != null &&
-                      widget.vocabulary.translation!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.vocabulary.translation!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_getFieldLabel(e.key)}:',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                        ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+                      const SizedBox(height: 8),
+                      Text(
+                        e.value,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
             const SizedBox(height: 20),
           ],
 
           const Spacer(),
-
-          // Nút đánh giá
-          ChoiceButtons(
-            onChoiceSelected: (choice) => widget.onChoiceSelected(choice),
-            labels: widget.labels,
-          ),
         ],
       ),
     );

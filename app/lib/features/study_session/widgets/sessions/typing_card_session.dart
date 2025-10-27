@@ -1,12 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/models/vocabulary.dart';
 import '../../../../core/services/database_service.dart';
-import '../choice_buttons.dart';
 
 class TypingCardSession extends StatefulWidget {
   final Vocabulary vocabulary;
   final Map<SrsChoice, String> labels;
   final Function(SrsChoice) onChoiceSelected;
+  final Function(bool)? onAnswerShown;
   final Color? accentColor;
 
   const TypingCardSession({
@@ -14,6 +15,7 @@ class TypingCardSession extends StatefulWidget {
     required this.vocabulary,
     required this.labels,
     required this.onChoiceSelected,
+    this.onAnswerShown,
     this.accentColor,
   });
 
@@ -70,6 +72,7 @@ class _TypingCardSessionState extends State<TypingCardSession>
       _userAnswer = '';
     });
     _animationController.reset();
+    widget.onAnswerShown?.call(false);
   }
 
   void _checkAnswer() {
@@ -78,17 +81,106 @@ class _TypingCardSessionState extends State<TypingCardSession>
     setState(() {
       _userAnswer = _answerController.text.trim();
       _isCorrect =
-          _userAnswer.toLowerCase() == widget.vocabulary.meaning.toLowerCase();
+          _userAnswer.toLowerCase() == widget.vocabulary.back.toLowerCase();
       _isShowingResult = true;
     });
 
     _animationController.forward();
+    widget.onAnswerShown?.call(true);
   }
 
   void _showAnswer() {
     if (!_isShowingResult) {
       _checkAnswer();
     }
+  }
+
+  bool _hasOtherFields(Map<String, String> extra) {
+    return extra.entries.any((entry) =>
+        entry.key != 'pronunciation' &&
+        entry.key != 'hint_text' &&
+        entry.value.trim().isNotEmpty);
+  }
+
+  String _getFieldLabel(String key) {
+    switch (key) {
+      case 'pronunciation':
+        return 'Phiên âm';
+      case 'example':
+        return 'Ví dụ';
+      case 'translation':
+        return 'Bản dịch ví dụ';
+      case 'hint_text':
+        return 'Gợi ý';
+      default:
+        return key;
+    }
+  }
+
+  IconData _getFieldIcon(String key) {
+    switch (key) {
+      case 'pronunciation':
+        return Icons.record_voice_over;
+      case 'example':
+        return Icons.format_quote;
+      case 'translation':
+        return Icons.translate;
+      case 'hint_text':
+        return Icons.lightbulb_outline;
+      default:
+        return Icons.text_fields;
+    }
+  }
+
+  Widget _buildFieldItem(String key, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _getFieldIcon(key),
+            size: 18,
+            color: Colors.white.withOpacity(0.8),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getFieldLabel(key),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.7),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -107,61 +199,174 @@ class _TypingCardSessionState extends State<TypingCardSession>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Icon đặc trưng cho typing card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
+          // Hint text ở đầu trang
+          if (widget.vocabulary.backExtra != null &&
+              widget.vocabulary.backExtra!.containsKey('hint_text') &&
+              widget.vocabulary.backExtra!['hint_text']!.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 16,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.vocabulary.backExtra!['hint_text']!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Icon(
-              Icons.keyboard,
-              size: 48,
-              color: Colors.white,
+            const SizedBox(height: 16),
+          ],
+
+          // Ảnh mặt trước (nếu có)
+          if (widget.vocabulary.imageUrl != null ||
+              widget.vocabulary.imagePath != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: widget.vocabulary.imagePath != null
+                    ? Image.file(
+                        File(widget.vocabulary.imagePath!),
+                        height: 120,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            width: 200,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      )
+                    : Image.network(
+                        widget.vocabulary.imageUrl!,
+                        height: 120,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            width: 200,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      ),
+              ),
             ),
-          ),
 
-          const SizedBox(height: 24),
-
+          // Main content
           Text(
-            widget.vocabulary.word,
+            widget.vocabulary.front,
             style: const TextStyle(
-              fontSize: 32,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.white,
+              height: 1.2,
             ),
             textAlign: TextAlign.center,
           ),
 
-          if (widget.vocabulary.pronunciation != null &&
-              widget.vocabulary.pronunciation!.isNotEmpty) ...[
+          // Pronunciation directly under main content
+          if (widget.vocabulary.frontExtra != null &&
+              widget.vocabulary.frontExtra!.containsKey('pronunciation') &&
+              widget.vocabulary.frontExtra!['pronunciation']!
+                  .trim()
+                  .isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(
-              widget.vocabulary.pronunciation!,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.white70,
-                fontStyle: FontStyle.italic,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
               ),
-              textAlign: TextAlign.center,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.record_voice_over,
+                    size: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.vocabulary.frontExtra!['pronunciation']!,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
+
+          // Other dynamic fields section
+          if (widget.vocabulary.frontExtra != null &&
+              _hasOtherFields(widget.vocabulary.frontExtra!)) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Thông tin bổ sung',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...widget.vocabulary.frontExtra!.entries
+                      .where((entry) =>
+                          entry.key != 'pronunciation' &&
+                          entry.key != 'hint_text' &&
+                          entry.value.trim().isNotEmpty)
+                      .map((entry) => _buildFieldItem(entry.key, entry.value)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
 
           // Ô nhập câu trả lời
-          if (widget.vocabulary.hintText != null &&
-              widget.vocabulary.hintText!.isNotEmpty) ...[
-            Text(
-              widget.vocabulary.hintText!,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-          ],
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -223,39 +428,46 @@ class _TypingCardSessionState extends State<TypingCardSession>
     return _buildCard(
       context,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          // Icon kết quả
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _isCorrect
-                  ? Colors.green.withOpacity(0.3)
-                  : Colors.red.withOpacity(0.3),
-              shape: BoxShape.circle,
+          // Ảnh mặt sau (nếu có)
+          if (widget.vocabulary.backImageUrl != null ||
+              widget.vocabulary.backImagePath != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: widget.vocabulary.backImagePath != null
+                    ? Image.file(
+                        File(widget.vocabulary.backImagePath!),
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      )
+                    : Image.network(
+                        widget.vocabulary.backImageUrl!,
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 120,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.error, color: Colors.white),
+                          );
+                        },
+                      ),
+              ),
             ),
-            child: Icon(
-              _isCorrect ? Icons.check_circle : Icons.cancel,
-              size: 48,
-              color: Colors.white,
-            ),
-          ),
 
-          const SizedBox(height: 24),
-
-          // Kết quả
-          Text(
-            _isCorrect ? 'Chính xác!' : 'Không đúng',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: _isCorrect ? Colors.green[300] : Colors.red[300],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Câu trả lời của người dùng
+          // Câu trả lời của người dùng với so sánh từng ký tự
           if (!_isCorrect) ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -264,12 +476,19 @@ class _TypingCardSessionState extends State<TypingCardSession>
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.red.withOpacity(0.5)),
               ),
-              child: Text(
-                'Bạn đã trả lời: $_userAnswer',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Bạn đã trả lời:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCharacterComparison(),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -284,7 +503,7 @@ class _TypingCardSessionState extends State<TypingCardSession>
               border: Border.all(color: Colors.green.withOpacity(0.5)),
             ),
             child: Text(
-              'Đáp án đúng: ${widget.vocabulary.meaning}',
+              'Đáp án đúng: ${widget.vocabulary.back}',
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.white,
@@ -293,13 +512,145 @@ class _TypingCardSessionState extends State<TypingCardSession>
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
 
-          // Nút đánh giá
-          ChoiceButtons(
-            onChoiceSelected: (choice) => widget.onChoiceSelected(choice),
-            labels: widget.labels,
-          ),
+          // Pronunciation ở mặt sau
+          if (widget.vocabulary.backExtra != null &&
+              widget.vocabulary.backExtra!.containsKey('pronunciation') &&
+              widget.vocabulary.backExtra!['pronunciation']!
+                  .trim()
+                  .isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.record_voice_over,
+                    size: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.vocabulary.backExtra!['pronunciation']!,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Translation ở mặt sau
+          if (widget.vocabulary.backExtra != null &&
+              widget.vocabulary.backExtra!.containsKey('translation') &&
+              widget.vocabulary.backExtra!['translation']!
+                  .trim()
+                  .isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 0.5,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.translate,
+                    size: 18,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bản dịch ví dụ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.7),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.vocabulary.backExtra!['translation']!,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          const SizedBox(height: 4),
+
+          // Hiển thị các trường động từ backExtra
+          if (widget.vocabulary.backExtra != null &&
+              widget.vocabulary.backExtra!.entries.any((entry) =>
+                  entry.key != 'hint_text' &&
+                  entry.key != 'pronunciation' &&
+                  entry.key != 'translation' &&
+                  entry.value.trim().isNotEmpty)) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Thông tin bổ sung',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...widget.vocabulary.backExtra!.entries
+                      .where((entry) =>
+                          entry.key != 'hint_text' &&
+                          entry.key != 'pronunciation' &&
+                          entry.key != 'translation' &&
+                          entry.value.trim().isNotEmpty)
+                      .map((entry) => _buildFieldItem(entry.key, entry.value)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
         ],
       ),
     );
@@ -344,6 +695,83 @@ class _TypingCardSessionState extends State<TypingCardSession>
           child: child,
         ),
       ),
+    );
+  }
+
+  Widget _buildCharacterComparison() {
+    final correctAnswer = widget.vocabulary.back.toLowerCase();
+    final userAnswer = _userAnswer.toLowerCase();
+
+    // Nếu đúng hoàn toàn, hiển thị màu xanh lá
+    if (userAnswer == correctAnswer) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.green.withOpacity(0.6)),
+        ),
+        child: Text(
+          _userAnswer,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.green,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    // So sánh từng ký tự
+    final List<Widget> characterWidgets = [];
+    final maxLength = userAnswer.length > correctAnswer.length
+        ? userAnswer.length
+        : correctAnswer.length;
+
+    for (int i = 0; i < maxLength; i++) {
+      final userChar = i < userAnswer.length ? userAnswer[i] : '';
+      final correctChar = i < correctAnswer.length ? correctAnswer[i] : '';
+
+      Color charColor;
+      String displayChar;
+
+      if (userChar == correctChar && userChar.isNotEmpty) {
+        charColor = Colors.white; // Đúng: màu trắng
+        displayChar = userChar;
+      } else if (userChar.isEmpty) {
+        charColor = Colors.grey; // Chưa nhập: màu xám
+        displayChar = correctChar; // Hiển thị ký tự thật của đáp án
+      } else {
+        charColor = Colors.red; // Sai: màu đỏ
+        displayChar = userChar;
+      }
+
+      characterWidgets.add(
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: charColor.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: charColor.withOpacity(0.6),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            displayChar,
+            style: TextStyle(
+              fontSize: 16,
+              color: charColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Wrap(
+      children: characterWidgets,
     );
   }
 }
