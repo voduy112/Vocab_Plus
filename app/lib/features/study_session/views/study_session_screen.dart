@@ -7,6 +7,8 @@ import '../widgets/empty_state.dart';
 import '../widgets/sessions/basis_card_session.dart';
 import '../widgets/sessions/reverse_card_session.dart';
 import '../widgets/sessions/typing_card_session.dart';
+import '../widgets/stats_card.dart';
+import '../widgets/choice_buttons.dart';
 
 class StudySessionScreen extends StatefulWidget {
   final Desk desk;
@@ -22,6 +24,10 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   int _index = 0;
   bool _isLoading = true;
   Map<SrsChoice, String> _labels = const {};
+  int _totalVocabularies = 0;
+  int _learnedCount = 0;
+  int _reviewCount = 0;
+  bool _isShowingResult = false;
 
   @override
   void initState() {
@@ -33,10 +39,22 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     setState(() => _isLoading = true);
     try {
       final items = await _service.getVocabulariesForStudy(widget.desk.id!);
+      final allVocabularies =
+          await _service.getVocabulariesByDeskId(widget.desk.id!);
+
+      // Tính toán thống kê
+      final totalCount = allVocabularies.length;
+      final learnedCount = allVocabularies.where((v) => v.srsType >= 1).length;
+      final reviewCount = allVocabularies.where((v) => v.srsType >= 2).length;
+
       setState(() {
         _queue = items;
         _index = 0;
         _isLoading = false;
+        _isShowingResult = false;
+        _totalVocabularies = totalCount;
+        _learnedCount = learnedCount;
+        _reviewCount = reviewCount;
       });
       _refreshLabels();
     } catch (e) {
@@ -57,6 +75,27 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     final v = _queue[_index];
     final labels = _service.previewChoiceLabels(v);
     setState(() => _labels = labels);
+  }
+
+  Future<void> _updateStats() async {
+    try {
+      final allVocabularies =
+          await _service.getVocabulariesByDeskId(widget.desk.id!);
+      final totalCount = allVocabularies.length;
+      final learnedCount = allVocabularies.where((v) => v.srsType >= 1).length;
+      final reviewCount = allVocabularies.where((v) => v.srsType >= 2).length;
+
+      if (mounted) {
+        setState(() {
+          _totalVocabularies = totalCount;
+          _learnedCount = learnedCount;
+          _reviewCount = reviewCount;
+        });
+      }
+    } catch (e) {
+      // Không hiển thị lỗi cho việc cập nhật thống kê
+      print('Lỗi cập nhật thống kê: $e');
+    }
   }
 
   Future<void> _choose(SrsChoice choice) async {
@@ -96,6 +135,12 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           _labels = _service.previewChoiceLabels(latest ?? _queue[_index]);
         });
       }
+
+      // Reset trạng thái hiển thị answer
+      setState(() => _isShowingResult = false);
+
+      // Cập nhật thống kê sau khi học
+      _updateStats();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,14 +154,33 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   Widget build(BuildContext context) {
     final color = Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF')));
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Học: ${widget.desk.name}'),
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(onPressed: _loadQueue, icon: const Icon(Icons.refresh))
-        ],
-      ),
+      appBar: _isLoading || _queue.isEmpty
+          ? AppBar(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              title: Text(widget.desk.name),
+            )
+          : AppBar(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              leading: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: Text(widget.desk.name),
+              bottom: PreferredSize(
+                preferredSize: Size.fromHeight(50),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: StatsCard(
+                    totalVocabularies: _totalVocabularies,
+                    learnedCount: _learnedCount,
+                    reviewCount: _reviewCount,
+                    accentColor: Colors.white,
+                  ),
+                ),
+              ),
+            ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _queue.isEmpty
@@ -138,6 +202,13 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           Expanded(
             child: _buildSessionByCardType(v, color),
           ),
+          const SizedBox(height: 16),
+          // Choice buttons luôn hiển thị bên ngoài card
+          ChoiceButtons(
+            onChoiceSelected: _choose,
+            labels: _labels,
+            isVisible: _isShowingResult,
+          ),
         ],
       ),
     );
@@ -150,6 +221,8 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           vocabulary: vocabulary,
           labels: _labels,
           onChoiceSelected: _choose,
+          onAnswerShown: (isShowing) =>
+              setState(() => _isShowingResult = isShowing),
           accentColor: color,
         );
       case CardType.reverse:
@@ -157,6 +230,8 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           vocabulary: vocabulary,
           labels: _labels,
           onChoiceSelected: _choose,
+          onAnswerShown: (isShowing) =>
+              setState(() => _isShowingResult = isShowing),
           accentColor: color,
         );
       case CardType.typing:
@@ -164,6 +239,8 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           vocabulary: vocabulary,
           labels: _labels,
           onChoiceSelected: _choose,
+          onAnswerShown: (isShowing) =>
+              setState(() => _isShowingResult = isShowing),
           accentColor: color,
         );
     }
