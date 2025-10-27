@@ -31,6 +31,10 @@ class _TypingCardFormState extends State<TypingCardForm> {
   @override
   void initState() {
     super.initState();
+
+    // Add listener to hint text controller
+    widget.hintTextController.addListener(_onHintTextChanged);
+
     _availableFields = [
       DynamicField(
         id: 'pronunciation',
@@ -52,13 +56,6 @@ class _TypingCardFormState extends State<TypingCardForm> {
         icon: Icons.translate,
         maxLines: 2,
       ),
-      DynamicField(
-        id: 'hint_text',
-        label: 'Gợi ý',
-        hint: 'Nhập gợi ý cho người học',
-        icon: Icons.lightbulb_outline,
-        maxLines: 2,
-      ),
     ];
 
     // Initialize fields based on existing data
@@ -67,6 +64,9 @@ class _TypingCardFormState extends State<TypingCardForm> {
 
     if (widget.initialFrontExtra != null) {
       for (final entry in widget.initialFrontExtra!.entries) {
+        // Skip hint_text as it's handled separately
+        if (entry.key == 'hint_text') continue;
+
         final field = _availableFields.firstWhere((f) => f.id == entry.key);
         _currentFrontFields.add(field);
       }
@@ -74,10 +74,36 @@ class _TypingCardFormState extends State<TypingCardForm> {
 
     if (widget.initialBackExtra != null) {
       for (final entry in widget.initialBackExtra!.entries) {
+        // Skip hint_text as it's handled separately
+        if (entry.key == 'hint_text') continue;
+
         final field = _availableFields.firstWhere((f) => f.id == entry.key);
         _currentBackFields.add(field);
       }
     }
+  }
+
+  void _onHintTextChanged() {
+    // Trigger a rebuild and state update when hint text changes
+    setState(() {});
+
+    // Always include hint_text in backValues (even if empty)
+    final updatedState = DynamicFormState(
+      frontFields: _currentFrontFields,
+      backFields: _currentBackFields,
+      frontValues: {},
+      backValues: {
+        'hint_text': widget.hintTextController.text.trim(),
+      },
+    );
+
+    widget.onChanged(updatedState);
+  }
+
+  @override
+  void dispose() {
+    widget.hintTextController.removeListener(_onHintTextChanged);
+    super.dispose();
   }
 
   @override
@@ -115,15 +141,14 @@ class _TypingCardFormState extends State<TypingCardForm> {
               _currentBackFields = state.backFields;
             });
 
-            // Add hint_text to backValues if it has content
+            // Always include hint_text in backValues (even if empty)
             final updatedState = DynamicFormState(
               frontFields: state.frontFields,
               backFields: state.backFields,
               frontValues: state.frontValues,
               backValues: {
                 ...state.backValues,
-                if (widget.hintTextController.text.trim().isNotEmpty)
-                  'hint_text': widget.hintTextController.text.trim(),
+                'hint_text': widget.hintTextController.text.trim(),
               },
             );
 
