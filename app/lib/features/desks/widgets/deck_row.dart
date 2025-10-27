@@ -50,7 +50,7 @@ class DeckRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '$learned/$total words',
+                    '$total words',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 11,
