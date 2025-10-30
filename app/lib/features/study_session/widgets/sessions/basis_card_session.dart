@@ -64,6 +64,69 @@ class _BasisCardSessionState extends State<BasisCardSession>
     }
   }
 
+  IconData _getFieldIcon(String key) {
+    switch (key) {
+      case 'pronunciation':
+        return Icons.record_voice_over;
+      case 'example':
+        return Icons.format_quote;
+      case 'translation':
+        return Icons.translate;
+      default:
+        return Icons.text_fields;
+    }
+  }
+
+  Widget _buildFieldItem(String key, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _getFieldIcon(key),
+            size: 18,
+            color: Colors.white.withOpacity(0.8),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getFieldLabel(key),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void didUpdateWidget(BasisCardSession oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -175,45 +238,31 @@ class _BasisCardSessionState extends State<BasisCardSession>
           // Dynamic front fields
           if (widget.vocabulary.frontExtra != null &&
               widget.vocabulary.frontExtra!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            ...widget.vocabulary.frontExtra!.entries.map((e) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${_getFieldLabel(e.key)}: ${e.value}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                )),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...widget.vocabulary.frontExtra!.entries
+                      .where((entry) =>
+                          entry.key != 'pronunciation' &&
+                          entry.value.trim().isNotEmpty)
+                      .map((entry) => _buildFieldItem(entry.key, entry.value)),
+                ],
+              ),
+            ),
           ],
 
           const SizedBox(height: 32),
-
-          // Hướng dẫn
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: const Text(
-              'Nhấn để xem nghĩa và ví dụ',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -284,41 +333,27 @@ class _BasisCardSessionState extends State<BasisCardSession>
           // Dynamic back fields
           if (widget.vocabulary.backExtra != null &&
               widget.vocabulary.backExtra!.isNotEmpty) ...[
-            ...widget.vocabulary.backExtra!.entries.map((e) => Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${_getFieldLabel(e.key)}:',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        e.value,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...widget.vocabulary.backExtra!.entries
+                      .where((entry) =>
+                          entry.key != 'pronunciation' &&
+                          entry.value.trim().isNotEmpty)
+                      .map((entry) => _buildFieldItem(entry.key, entry.value)),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
           ],
 

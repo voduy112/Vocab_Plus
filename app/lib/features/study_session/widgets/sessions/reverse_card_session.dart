@@ -268,15 +268,6 @@ class _ReverseCardSessionState extends State<ReverseCardSession>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Thông tin bổ sung',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     ...widget.vocabulary.frontExtra!.entries
                         .where((entry) =>
                             entry.key != 'pronunciation' &&
@@ -390,15 +381,6 @@ class _ReverseCardSessionState extends State<ReverseCardSession>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Thông tin bổ sung',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
                       ...widget.vocabulary.backExtra!.entries
                           .where((entry) =>
                               entry.key != 'pronunciation' &&
