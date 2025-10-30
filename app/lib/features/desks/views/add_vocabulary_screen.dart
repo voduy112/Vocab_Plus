@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../study_session/widgets/sessions/basis_card_session.dart';
+import '../../study_session/widgets/sessions/reverse_card_session.dart';
+import '../../study_session/widgets/sessions/typing_card_session.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/models/desk.dart';
 import '../../../core/models/vocabulary.dart';
@@ -163,6 +166,12 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
               ),
             )
           else
+            IconButton(
+              tooltip: 'Xem trước',
+              icon: const Icon(Icons.visibility_outlined, color: Colors.white),
+              onPressed: _showPreviewDialog,
+            ),
+          if (!_isLoading)
             TextButton(
               onPressed: _saveVocabulary,
               child: Text(
@@ -379,13 +388,18 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
                             ? _frontController.text.trim()
                             : _backController.text.trim(),
                         onChanged: (value) {
+                          print('Image changed: ${value.$1}, ${value.$2}');
                           setState(() {
                             if (_pickForFront) {
                               _frontImageUrl = value.$1;
                               _frontImagePath = value.$2;
+                              print(
+                                  'Front image set: URL=${_frontImageUrl}, Path=${_frontImagePath}');
                             } else {
                               _backImageUrl = value.$1;
                               _backImagePath = value.$2;
+                              print(
+                                  'Back image set: URL=${_backImageUrl}, Path=${_backImagePath}');
                             }
                           });
                         },
@@ -467,6 +481,12 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         frontExtra: _dynamicState?.frontValues,
         backExtra: _dynamicState?.backValues,
       );
+      print('=== SAVING VOCABULARY ===');
+      print('Front image URL: $_frontImageUrl');
+      print('Front image Path: $_frontImagePath');
+      print('Back image URL: $_backImageUrl');
+      print('Back image Path: $_backImagePath');
+      print('Card type: $_selectedCardType');
       print('vocabulary: ${vocabulary.toString()}');
       final databaseService = DatabaseService();
 
@@ -551,5 +571,101 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showPreviewDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final now = DateTime.now();
+        final tempVocab = Vocabulary(
+          id: null,
+          deskId: widget.desk.id!,
+          front: _frontController.text.trim(),
+          back: _backController.text.trim(),
+          imageUrl: _frontImageUrl,
+          imagePath: _frontImagePath,
+          backImageUrl: _backImageUrl,
+          backImagePath: _backImagePath,
+          frontExtra: _dynamicState?.frontValues,
+          backExtra: _dynamicState?.backValues,
+          createdAt: now,
+          updatedAt: now,
+          cardType: _selectedCardType,
+        );
+
+        final labels = DatabaseService().previewChoiceLabels(tempVocab);
+        final accent =
+            Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF')));
+
+        Widget sessionWidget;
+        switch (_selectedCardType) {
+          case CardType.basis:
+            sessionWidget = BasisCardSession(
+              vocabulary: tempVocab,
+              labels: labels,
+              onChoiceSelected: (_) {},
+              onAnswerShown: (_) {},
+              accentColor: accent,
+            );
+            break;
+          case CardType.reverse:
+            sessionWidget = ReverseCardSession(
+              vocabulary: tempVocab,
+              labels: labels,
+              onChoiceSelected: (_) {},
+              onAnswerShown: (_) {},
+              accentColor: accent,
+            );
+            break;
+          case CardType.typing:
+            sessionWidget = TypingCardSession(
+              vocabulary: tempVocab,
+              labels: labels,
+              onChoiceSelected: (_) {},
+              onAnswerShown: (_) {},
+              accentColor: accent,
+            );
+            break;
+        }
+
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _selectedCardType == CardType.basis
+                      ? 'Basis'
+                      : _selectedCardType == CardType.reverse
+                          ? 'Reverse'
+                          : 'Typing',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: sessionWidget,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Đóng'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
