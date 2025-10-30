@@ -99,6 +99,13 @@ class DeskRepository {
     );
     final total = Sqflite.firstIntValue(totalResult) ?? 0;
 
+    // Số từ vựng mới
+    final newVocabulariesResult = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND is_active = ? AND srs_type = 0',
+      [deskId, 1],
+    );
+    final newVocabularies = Sqflite.firstIntValue(newVocabulariesResult) ?? 0;
+
     // Số từ đã học (mastery_level > 0)
     final learnedResult = await db.rawQuery(
       'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND mastery_level > 0 AND is_active = ?',
@@ -144,6 +151,7 @@ class DeskRepository {
 
     return {
       'total': total,
+      'newVocabularies': newVocabularies,
       'learned': learned,
       'mastered': mastered,
       'needReview': needReview,
