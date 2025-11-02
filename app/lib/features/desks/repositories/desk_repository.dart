@@ -140,15 +140,6 @@ class DeskRepository {
         ? (avgMasteryResult.first['avg'] as double? ?? 0.0).round()
         : 0;
 
-    // Tính progress dựa trên số từ vựng đã học
-    double progress = 0.0;
-    if (total > 0) {
-      progress = learned / total;
-    }
-
-    // Debug log
-    print('Desk Stats - Total: $total, Learned: $learned, Progress: $progress');
-
     return {
       'total': total,
       'newVocabularies': newVocabularies,
@@ -156,7 +147,6 @@ class DeskRepository {
       'mastered': mastered,
       'needReview': needReview,
       'avgMastery': avgMastery,
-      'progress': progress,
     };
   }
 }
