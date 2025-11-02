@@ -63,22 +63,6 @@ class VocabularyRepository {
     );
   }
 
-  // Tìm kiếm từ vựng
-  Future<List<Vocabulary>> searchVocabularies(int deskId, String query) async {
-    final db = await _databaseHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'vocabularies',
-      where:
-          'desk_id = ? AND (word LIKE ? OR meaning LIKE ?) AND is_active = ?',
-      whereArgs: [deskId, '%$query%', '%$query%', 1],
-      orderBy: 'created_at DESC',
-    );
-
-    return List.generate(maps.length, (i) {
-      return Vocabulary.fromMap(maps[i]);
-    });
-  }
-
   // Lấy từ vựng cần ôn tập
   Future<List<Vocabulary>> getVocabulariesForStudy(int deskId,
       {int? limit}) async {
@@ -164,50 +148,67 @@ class VocabularyRepository {
     );
   }
 
-  // (removed) _getReviewCount no longer used as review_count may not exist in schema
-
-  // Lấy thống kê từ vựng trong desk
-  Future<Map<String, dynamic>> getVocabularyStats(int deskId) async {
+  // Đếm số từ đang ở trạng thái học lại theo phút (minute-learning)
+  Future<int> countMinuteLearning(int deskId) async {
     final db = await _databaseHelper.database;
-
-    // Tổng số từ vựng
-    final totalResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND is_active = ?',
-      [deskId, 1],
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND is_active = 1 AND srs_queue = 1 AND srs_left >= 1000',
+      [deskId],
     );
-    final total = Sqflite.firstIntValue(totalResult) ?? 0;
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
 
-    // Số từ theo mức độ thành thạo
-    final masteryStats = await db.rawQuery('''
-      SELECT 
-        CASE 
-          WHEN mastery_level = 0 THEN 'not_learned'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
-          WHEN mastery_level < 30 THEN 'beginner'
-          WHEN mastery_level < 60 THEN 'intermediate'
-          WHEN mastery_level < 80 THEN 'advanced'
-          ELSE 'mastered'
-        END as level,
-        COUNT(*) as count
-      FROM vocabularies 
-      WHERE desk_id = ? AND is_active = ?
-      GROUP BY level
-    ''', [deskId, 1]);
+  // Đếm số từ vựng mới (chưa học lần nào: srs_repetitions = 0)
+  Future<int> countNewVocabularies(int deskId) async {
+    final db = await _databaseHelper.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND is_active = 1 AND (srs_repetitions IS NULL OR srs_repetitions = 0)',
+      [deskId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
 
-    final stats = <String, int>{
-      'not_learned': 0,
-      'beginner': 0,
-      'intermediate': 0,
-      'advanced': 0,
-      'mastered': 0,
-    };
+  // Đếm số từ đến hạn theo ngày trong khoảng thời gian (gộp theo ngày)
+  Future<Map<DateTime, int>> getDueCountsByDateRange({
+    required DateTime start,
+    required DateTime end,
+    int? deskId,
+  }) async {
+    final db = await _databaseHelper.database;
+    // Dùng COALESCE(srs_due, next_review) để tương thích với cả review và day-learning
+    final String baseSql = '''
+      SELECT DATE(COALESCE(srs_due, next_review)) AS day, COUNT(*) AS count
+      FROM vocabularies
+      WHERE is_active = 1
+        AND (
+              (srs_due IS NOT NULL AND DATE(srs_due) BETWEEN DATE(?) AND DATE(?))
+           OR (srs_due IS NULL AND next_review IS NOT NULL AND DATE(next_review) BETWEEN DATE(?) AND DATE(?))
+        )
+        ${deskId != null ? 'AND desk_id = ?' : ''}
+      GROUP BY DATE(COALESCE(srs_due, next_review))
+      ORDER BY day ASC
+    ''';
 
-    for (final row in masteryStats) {
-      stats[row['level'] as String] = row['count'] as int;
+    final List<Object?> args = [
+      start.toIso8601String(),
+      end.toIso8601String(),
+      start.toIso8601String(),
+      end.toIso8601String(),
+      if (deskId != null) deskId,
+    ];
+
+    final List<Map<String, dynamic>> rows = await db.rawQuery(baseSql, args);
+    final Map<DateTime, int> result = {};
+    for (final row in rows) {
+      final String dayStr = row['day'] as String; // yyyy-MM-dd
+      final parts = dayStr.split('-');
+      if (parts.length == 3) {
+        final int year = int.parse(parts[0]);
+        final int month = int.parse(parts[1]);
+        final int day = int.parse(parts[2]);
+        result[DateTime(year, month, day)] = (row['count'] as int? ?? 0);
+      }
     }
-
-    return {
-      'total': total,
-      'by_mastery': stats,
-    };
+    return result;
   }
 }
