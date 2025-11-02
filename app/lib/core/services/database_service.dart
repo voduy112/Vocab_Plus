@@ -47,6 +47,10 @@ class DatabaseService {
           {DateTime? nextReview}) =>
       _vocabularyRepository.updateMasteryLevel(vocabularyId, newMasteryLevel,
           nextReview: nextReview);
+  Future<int> countMinuteLearningByDesk(int deskId) =>
+      _vocabularyRepository.countMinuteLearning(deskId);
+  Future<int> countNewByDesk(int deskId) =>
+      _vocabularyRepository.countNewVocabularies(deskId);
 
   // Study session operations
   Future<int> createStudySession(StudySession session) =>
@@ -449,6 +453,17 @@ class DatabaseService {
       return '${label}th';
     }
     return '${daysCeil}ng';
+  }
+
+  // Trả về số từ vựng cần học theo ngày, dùng cho heatmap
+  Future<Map<DateTime, int>> getDueCountsByDateRange(
+      {DateTime? start, DateTime? end, int? deskId}) async {
+    final now = DateTime.now();
+    final s =
+        start ?? DateTime(now.year, now.month - 3, now.day); // 3 tháng gần nhất
+    final e = end ?? DateTime(now.year, now.month, now.day);
+    return await _vocabularyRepository.getDueCountsByDateRange(
+        start: s, end: e, deskId: deskId);
   }
 }
 
