@@ -151,8 +151,10 @@ class _DesksScreenState extends State<DesksScreen>
   }
 
   Future<void> _createNewDesk() async {
-    final result = await showDialog<Map<String, String?>>(
+    final result = await showModalBottomSheet<Map<String, String?>>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => const CreateDeskDialog(),
     );
 
@@ -168,22 +170,6 @@ class _DesksScreenState extends State<DesksScreen>
 
         await _databaseService.createDesk(desk);
         await _loadDesks(forceReload: true);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green[600]),
-                  const SizedBox(width: 8),
-                  Text('Created deck "${desk.name}" successfully'),
-                ],
-              ),
-              backgroundColor: Colors.green[50],
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -341,7 +327,6 @@ class _DesksScreenState extends State<DesksScreen>
         totalLearned: totalLearned,
         totalNewWords: totalNewWords,
         totalDue: totalDue,
-        totalDecks: _desks.length,
       ),
     );
   }
@@ -363,7 +348,6 @@ class _DesksScreenState extends State<DesksScreen>
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       body: SafeArea(
         child: Column(
           children: [
