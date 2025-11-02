@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/desk.dart';
 import '../views/add_vocabulary_screen.dart';
+import '../../../core/widgets/context_menu_scaffold.dart';
 
 class DeckContextMenu extends StatelessWidget {
   final Desk desk;
@@ -14,27 +15,10 @@ class DeckContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
+    return ContextMenuScaffold(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
           // Header
           Padding(
             padding: const EdgeInsets.all(20),
