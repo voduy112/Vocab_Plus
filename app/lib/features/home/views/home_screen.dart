@@ -2,184 +2,176 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/auth/auth_controller.dart';
-import '../../../core/widgets/search.dart';
+import '../widgets/due_heat_map.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final name = context.watch<AuthController>().displayName;
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Welcome back,',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.w400,
-                          )),
-                  Text(name,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          )),
-                ],
-              ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(20),
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day - 15);
+    final end = DateTime(now.year, now.month + 2, now.day);
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Welcome back,',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+            ),
+            Text(
+              name,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.notifications_outlined),
                 ),
-                child: Stack(
-                  children: [
-                    const Center(
-                      child: Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.blue,
-                        size: 24,
-                      ),
-                    ),
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ),
-                  ],
+                const Positioned(
+                  right: 14,
+                  top: 14,
+                  child: CircleAvatar(
+                      radius: 4, backgroundColor: Colors.redAccent),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          const Search(),
-          const SizedBox(height: 24),
-          _SectionHeader(title: 'Category', onSeeAll: () {}),
-          const SizedBox(height: 12),
-          const Wrap(spacing: 12, runSpacing: 12, children: [
-            _Chip(label: 'Travel', icon: Icons.work_outline),
-            _Chip(label: 'Learn', icon: Icons.pause_circle_outline),
-            _Chip(label: 'Finance', icon: Icons.attach_money),
-          ]),
-          const SizedBox(height: 24),
-          _SectionHeader(title: 'New words', onSeeAll: () {}),
-          const SizedBox(height: 12),
-          const _WordCard(
-              title: 'Quaintrelle',
-              ipa: '/kwāˈnˈtrel/',
-              meaning: 'to go to a place in order to look at it'),
-          const SizedBox(height: 12),
-          const _WordCard(
-              title: 'Learn',
-              ipa: '/lɜːn/',
-              meaning: 'to get new knowledge or skill'),
-          const SizedBox(height: 12),
-          const _WordCard(
-              title: 'Learn',
-              ipa: '/lɜːn/',
-              meaning: 'to get new knowledge or skill'),
         ],
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Lưới chức năng (5 nút)
+            GridView.count(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 1,
+              children: [
+                _FeatureTile(
+                  icon: Icons.school_outlined,
+                  label: 'Học',
+                  bgColor: Theme.of(context).colorScheme.primaryContainer,
+                  iconColor: Theme.of(context).colorScheme.primary,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đi tới Học')),
+                    );
+                  },
+                ),
+                _FeatureTile(
+                  icon: Icons.repeat_outlined,
+                  label: 'Ôn tập',
+                  bgColor: Theme.of(context).colorScheme.secondaryContainer,
+                  iconColor: Theme.of(context).colorScheme.secondary,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đi tới Ôn tập')),
+                    );
+                  },
+                ),
+                _FeatureTile(
+                  icon: Icons.view_agenda_outlined,
+                  label: 'Bộ thẻ',
+                  bgColor: Theme.of(context).colorScheme.tertiaryContainer,
+                  iconColor: Theme.of(context).colorScheme.tertiary,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đi tới Bộ thẻ')),
+                    );
+                  },
+                ),
+                _FeatureTile(
+                  icon: Icons.search_outlined,
+                  label: 'Tìm kiếm',
+                  bgColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  iconColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đi tới Tìm kiếm')),
+                    );
+                  },
+                ),
+                _FeatureTile(
+                  icon: Icons.bar_chart_outlined,
+                  label: 'Thống kê',
+                  bgColor: Theme.of(context).colorScheme.primaryContainer,
+                  iconColor: Theme.of(context).colorScheme.primary,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đi tới Thống kê')),
+                    );
+                  },
+                ),
+              ],
+            ),
+            // HeatMap hiển thị số lượng từ vựng cần học theo ngày
+            const SizedBox(height: 16),
+            DueHeatMap(start: start, end: end),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback onSeeAll;
-  const _SectionHeader({required this.title, required this.onSeeAll});
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          TextButton(onPressed: onSeeAll, child: const Text('See All')),
-        ],
-      );
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
+class _FeatureTile extends StatelessWidget {
   final IconData icon;
-  const _Chip({required this.label, required this.icon});
-  @override
-  Widget build(BuildContext context) => Chip(
-        avatar: Icon(icon, size: 18),
-        label: Text(label),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      );
-}
+  final String label;
+  final VoidCallback onTap;
+  final Color? bgColor;
+  final Color? iconColor;
 
-class _WordCard extends StatelessWidget {
-  final String title, ipa, meaning;
-  const _WordCard(
-      {required this.title, required this.ipa, required this.meaning});
+  const _FeatureTile(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.bgColor,
+      this.iconColor});
+
   @override
-  Widget build(BuildContext context) => Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                      width: 56, height: 56, color: Colors.grey.shade300)),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8)),
-                      child: const Text('Travel'),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w800)),
-                    Text(ipa,
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelLarge
-                            ?.copyWith(color: Colors.grey[700])),
-                  ])),
-              IconButton(
-                  onPressed: () {}, icon: const Icon(Icons.volume_up_outlined))
-            ]),
-            const SizedBox(height: 12),
-            Text(meaning),
-            const SizedBox(height: 8),
-            Text('We visited a few galleries while we were in Prague.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(fontStyle: FontStyle.italic))
-          ]),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: bgColor ?? theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
         ),
-      );
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: iconColor ?? theme.colorScheme.primary, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
