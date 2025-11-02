@@ -1,44 +1,35 @@
 import 'package:flutter/material.dart';
 
 class StatsCard extends StatelessWidget {
-  final int totalVocabularies;
-  final int learnedCount;
   final int reviewCount;
-  final Color accentColor;
+  final int minuteLearningCount;
+  final int newCount;
+  // final Color accentColor;
 
   const StatsCard({
     super.key,
-    required this.totalVocabularies,
-    required this.learnedCount,
     required this.reviewCount,
-    required this.accentColor,
+    required this.minuteLearningCount,
+    required this.newCount,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: accentColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: accentColor.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildStatItem(
-            'Tổng từ vựng',
-            totalVocabularies.toString(),
-            Icons.library_books,
-            accentColor,
+            'Mới',
+            newCount.toString(),
+            Icons.fiber_new,
+            Colors.blue,
           ),
           _buildStatItem(
-            'Đã học',
-            learnedCount.toString(),
-            Icons.check_circle,
-            Colors.green,
+            'Học',
+            minuteLearningCount.toString(),
+            Icons.timer,
+            Colors.cyan,
           ),
           _buildStatItem(
             'Cần ôn',
@@ -53,13 +44,26 @@ class StatsCard extends StatelessWidget {
 
   Widget _buildStatItem(
       String label, String value, IconData icon, Color color) {
-    return Text(
-      value,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: color,
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: color.withOpacity(0.8),
+          ),
+        ),
+      ],
     );
   }
 }
