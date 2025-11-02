@@ -5,7 +5,6 @@ class FeaturedCard extends StatelessWidget {
   final int totalLearned;
   final int totalNewWords;
   final int totalDue;
-  final int totalDecks;
 
   const FeaturedCard({
     super.key,
@@ -13,7 +12,6 @@ class FeaturedCard extends StatelessWidget {
     required this.totalLearned,
     required this.totalNewWords,
     required this.totalDue,
-    required this.totalDecks,
   });
 
   @override
@@ -101,32 +99,6 @@ class FeaturedCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.folder,
-                  color: Colors.white,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '$totalDecks deck${totalDecks > 1 ? 's' : ''}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
