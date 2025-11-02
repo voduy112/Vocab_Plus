@@ -28,6 +28,7 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
   bool _isLoading = true;
   String _searchQuery = '';
   Map<String, dynamic>? _deskStats;
+  int _minuteLearningCount = 0;
 
   @override
   void initState() {
@@ -65,8 +66,11 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
   Future<void> _loadDeskStats() async {
     try {
       final stats = await _databaseService.getDeskStats(widget.desk.id!);
+      final minuteLearning =
+          await _databaseService.countMinuteLearningByDesk(widget.desk.id!);
       setState(() {
         _deskStats = stats;
+        _minuteLearningCount = minuteLearning;
       });
     } catch (e) {
       print('Lỗi khi tải thống kê desk: $e');
@@ -197,15 +201,16 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
                   Row(
                     children: [
                       StatCard(
-                        title: 'Tổng',
-                        value: '${_deskStats!['total']}',
+                        title: 'Từ mới',
+                        value:
+                            '${(_deskStats!['total'] as int) - (_deskStats!['learned'] as int) - _minuteLearningCount}',
                         color: Colors.blue,
                       ),
                       const SizedBox(width: 12),
                       StatCard(
-                        title: 'Đã học',
-                        value: '${_deskStats!['learned']}',
-                        color: Colors.green,
+                        title: 'Học',
+                        value: '$_minuteLearningCount',
+                        color: Colors.cyan,
                       ),
                       const SizedBox(width: 12),
                       StatCard(
@@ -214,20 +219,6 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
                         color: Colors.orange,
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: _deskStats!['progress'],
-                    backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(int.parse(
-                          widget.desk.color.replaceFirst('#', '0xFF'))),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tiến độ: ${(_deskStats!['progress'] * 100).round()}%',
-                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ],
@@ -241,12 +232,43 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
               controller: _searchController,
               onChanged: _filterVocabularies,
               decoration: InputDecoration(
-                hintText: 'Tìm kiếm từ vựng...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
+                hintStyle: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 14,
                 ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Colors.grey[600],
+                  size: 20,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(
+                          Icons.clear,
+                          color: Colors.grey[600],
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide(color: Colors.blue[400]!, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
             ),
           ),
