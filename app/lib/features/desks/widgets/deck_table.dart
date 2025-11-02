@@ -50,7 +50,7 @@ class DeckTable extends StatelessWidget {
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.grey[50],
               borderRadius: const BorderRadius.only(
@@ -164,21 +164,49 @@ class DeckTable extends StatelessWidget {
                 ],
               ),
             )
-          else
-            ...desks.map((desk) => DeckRow(
-                  desk: desk,
-                  stats: deskStats[desk.id] ??
-                      {
-                        'total': 0,
-                        'learned': 0,
-                        'mastered': 0,
-                        'needReview': 0,
-                        'avgMastery': 0.0,
-                        'progress': 0.0,
-                      },
-                  onTap: () => onDeckTap(desk),
-                  onLongPress: () => onDeckLongPress(desk),
-                )),
+          else ...[
+            if (desks.length > 4)
+              SizedBox(
+                // Approximate height for 5 rows; adjust if your row height changes
+                height: 5 * 70,
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: desks.length,
+                  itemBuilder: (context, index) {
+                    final desk = desks[index];
+                    return DeckRow(
+                      desk: desk,
+                      stats: deskStats[desk.id] ??
+                          {
+                            'total': 0,
+                            'learned': 0,
+                            'mastered': 0,
+                            'needReview': 0,
+                            'avgMastery': 0.0,
+                            'progress': 0.0,
+                          },
+                      onTap: () => onDeckTap(desk),
+                      onLongPress: () => onDeckLongPress(desk),
+                    );
+                  },
+                ),
+              )
+            else
+              ...desks.map((desk) => DeckRow(
+                    desk: desk,
+                    stats: deskStats[desk.id] ??
+                        {
+                          'total': 0,
+                          'learned': 0,
+                          'mastered': 0,
+                          'needReview': 0,
+                          'avgMastery': 0.0,
+                          'progress': 0.0,
+                        },
+                    onTap: () => onDeckTap(desk),
+                    onLongPress: () => onDeckLongPress(desk),
+                  )),
+          ],
         ],
       ),
     );
