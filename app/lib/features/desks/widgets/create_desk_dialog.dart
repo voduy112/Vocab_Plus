@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import '../../../core/widgets/context_menu_scaffold.dart';
 import '../../../core/widgets/custom_form_field.dart';
 
 class CreateDeskDialog extends StatefulWidget {
@@ -13,6 +14,12 @@ class _CreateDeskDialogState extends State<CreateDeskDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   String _selectedColor = '#2196F3';
+
+  bool get _isValid {
+    final String name = _nameController.text.trim();
+    if (name.isEmpty || name.length < 2 || name.length > 50) return false;
+    return true;
+  }
 
   @override
   void dispose() {
@@ -111,113 +118,100 @@ class _CreateDeskDialogState extends State<CreateDeskDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(Icons.add_circle_outline, color: Colors.blue[600]),
-          const SizedBox(width: 8),
-          const Text('Tạo deck mới'),
-        ],
-      ),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomFormField(
-              controller: _nameController,
-              label: 'Tên deck',
-              hintText: 'Nhập tên deck của bạn',
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Vui lòng nhập tên deck';
-                }
-                if (value.trim().length < 2) {
-                  return 'Tên deck phải có ít nhất 2 ký tự';
-                }
-                if (value.trim().length > 50) {
-                  return 'Tên deck không được quá 50 ký tự';
-                }
-                return null;
-              },
-              maxLines: 1,
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Màu sắc',
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
+    final double bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      top: false,
+      child: ContextMenuScaffold(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Color(
-                        int.parse(_selectedColor.replaceFirst('#', '0xFF'))),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey[300]!, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                const Text(
+                  'Add Deck',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomFormField(
+                        controller: _nameController,
+                        label: 'Deck',
+                        hintText: 'Deck',
+                        suffixIcon: InkWell(
+                          onTap: _openColorPicker,
+                          customBorder: const CircleBorder(),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 10),
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Color(int.parse(
+                                    _selectedColor.replaceFirst('#', '0xFF'))),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                            ),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Vui lòng nhập tên deck';
+                          }
+                          if (value.trim().length < 2) {
+                            return 'Tên deck phải có ít nhất 2 ký tự';
+                          }
+                          if (value.trim().length > 50) {
+                            return 'Tên deck không được quá 50 ký tự';
+                          }
+                          return null;
+                        },
+                        onChanged: (_) => setState(() {}),
                       ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _selectedColor,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
                     ),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _openColorPicker,
-                  icon: const Icon(Icons.palette_outlined, size: 18),
-                  label: const Text('Chọn màu'),
-                  style: OutlinedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _isValid
+                            ? () {
+                                if (_formKey.currentState!.validate()) {
+                                  final result = <String, String?>{
+                                    'name': _nameController.text.trim(),
+                                    'color': _selectedColor,
+                                  };
+                                  Navigator.of(context).pop(result);
+                                }
+                              }
+                            : null,
+                        child: const Text('Add deck'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Hủy'),
-        ),
-        FilledButton.icon(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              final result = <String, String?>{
-                'name': _nameController.text.trim(),
-                'color': _selectedColor,
-              };
-              Navigator.of(context).pop(result);
-            }
-          },
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Tạo deck'),
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.blue[600],
-            foregroundColor: Colors.white,
           ),
         ),
-      ],
+      ),
     );
   }
 }
