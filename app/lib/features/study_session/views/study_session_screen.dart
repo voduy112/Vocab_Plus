@@ -25,8 +25,9 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   bool _isLoading = true;
   Map<SrsChoice, String> _labels = const {};
   int _totalVocabularies = 0;
-  int _learnedCount = 0;
   int _reviewCount = 0;
+  int _minuteLearningCount = 0;
+  int _newCount = 0;
   bool _isShowingResult = false;
 
   @override
@@ -39,13 +40,14 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     setState(() => _isLoading = true);
     try {
       final items = await _service.getVocabulariesForStudy(widget.desk.id!);
-      final allVocabularies =
-          await _service.getVocabulariesByDeskId(widget.desk.id!);
 
       // Tính toán thống kê
-      final totalCount = allVocabularies.length;
-      final learnedCount = allVocabularies.where((v) => v.srsType >= 1).length;
-      final reviewCount = allVocabularies.where((v) => v.srsType >= 2).length;
+      final deskStats = await _service.getDeskStats(widget.desk.id!);
+      final totalCount = deskStats['total'] ?? 0;
+      final reviewCount = deskStats['needReview'] ?? 0; // Số từ tới hạn cần ôn
+      final minuteLearning =
+          await _service.countMinuteLearningByDesk(widget.desk.id!);
+      final newCount = await _service.countNewByDesk(widget.desk.id!);
 
       setState(() {
         _queue = items;
@@ -53,8 +55,9 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
         _isLoading = false;
         _isShowingResult = false;
         _totalVocabularies = totalCount;
-        _learnedCount = learnedCount;
         _reviewCount = reviewCount;
+        _minuteLearningCount = minuteLearning;
+        _newCount = newCount;
       });
       _refreshLabels();
     } catch (e) {
@@ -77,19 +80,28 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     setState(() => _labels = labels);
   }
 
+  void _setIsShowingResultSafely(bool isShowing) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _isShowingResult = isShowing);
+    });
+  }
+
   Future<void> _updateStats() async {
     try {
-      final allVocabularies =
-          await _service.getVocabulariesByDeskId(widget.desk.id!);
-      final totalCount = allVocabularies.length;
-      final learnedCount = allVocabularies.where((v) => v.srsType >= 1).length;
-      final reviewCount = allVocabularies.where((v) => v.srsType >= 2).length;
+      final deskStats = await _service.getDeskStats(widget.desk.id!);
+      final totalCount = deskStats['total'] ?? 0;
+      final reviewCount = deskStats['needReview'] ?? 0; // Số từ tới hạn cần ôn
+      final minuteLearning =
+          await _service.countMinuteLearningByDesk(widget.desk.id!);
+      final newCount = await _service.countNewByDesk(widget.desk.id!);
 
       if (mounted) {
         setState(() {
           _totalVocabularies = totalCount;
-          _learnedCount = learnedCount;
           _reviewCount = reviewCount;
+          _minuteLearningCount = minuteLearning;
+          _newCount = newCount;
         });
       }
     } catch (e) {
@@ -102,6 +114,11 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     if (_queue.isEmpty || _index >= _queue.length) return;
     final v = _queue[_index];
     try {
+      // Luôn lật về mặt trước trước khi xử lý lựa chọn, đặc biệt khi là thẻ cuối
+      if (_isShowingResult) {
+        setState(() => _isShowingResult = false);
+      }
+      final bool wasNew = (v.srsRepetitions == 0);
       final result = await _service.reviewWithChoice(
         vocabularyId: v.id!,
         choice: choice,
@@ -114,10 +131,20 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
       print('choice: $choice');
       print('Từ vựng đã được ghi nhận học với choice: $choice');
 
+      if (wasNew) {
+        setState(() {
+          _newCount = _newCount > 0 ? _newCount - 1 : 0;
+        });
+      }
+
       if (!dueIsMinutes || updatedSrsType == 2 || choice == SrsChoice.easy) {
         // Due theo ngày hoặc đã vào review: loại khỏi phiên
         _queue.removeAt(_index);
         if (_index >= _queue.length) _index = 0;
+        // Cập nhật reviewCount ngay lập tức khi từ được loại khỏi queue
+        setState(() {
+          _reviewCount = _reviewCount > 0 ? _reviewCount - 1 : 0;
+        });
       } else {
         // Còn học theo phút: giữ trong phiên
         final current = _queue.removeAt(_index);
@@ -139,8 +166,8 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
       // Reset trạng thái hiển thị answer
       setState(() => _isShowingResult = false);
 
-      // Cập nhật thống kê sau khi học
-      _updateStats();
+      // Cập nhật thống kê ngay lập tức sau khi học
+      await _updateStats();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -171,12 +198,11 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
               bottom: PreferredSize(
                 preferredSize: Size.fromHeight(50),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: StatsCard(
-                    totalVocabularies: _totalVocabularies,
-                    learnedCount: _learnedCount,
                     reviewCount: _reviewCount,
-                    accentColor: Colors.white,
+                    minuteLearningCount: _minuteLearningCount,
+                    newCount: _newCount,
                   ),
                 ),
               ),
@@ -221,8 +247,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           vocabulary: vocabulary,
           labels: _labels,
           onChoiceSelected: _choose,
-          onAnswerShown: (isShowing) =>
-              setState(() => _isShowingResult = isShowing),
+          onAnswerShown: (isShowing) => _setIsShowingResultSafely(isShowing),
           accentColor: color,
         );
       case CardType.reverse:
@@ -230,8 +255,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           vocabulary: vocabulary,
           labels: _labels,
           onChoiceSelected: _choose,
-          onAnswerShown: (isShowing) =>
-              setState(() => _isShowingResult = isShowing),
+          onAnswerShown: (isShowing) => _setIsShowingResultSafely(isShowing),
           accentColor: color,
         );
       case CardType.typing:
@@ -239,8 +263,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           vocabulary: vocabulary,
           labels: _labels,
           onChoiceSelected: _choose,
-          onAnswerShown: (isShowing) =>
-              setState(() => _isShowingResult = isShowing),
+          onAnswerShown: (isShowing) => _setIsShowingResultSafely(isShowing),
           accentColor: color,
         );
     }
