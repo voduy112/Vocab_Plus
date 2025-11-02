@@ -39,8 +39,6 @@ class DatabaseService {
       _vocabularyRepository.updateVocabulary(vocabulary);
   Future<int> deleteVocabulary(int id) =>
       _vocabularyRepository.deleteVocabulary(id);
-  Future<List<Vocabulary>> searchVocabularies(int deskId, String query) =>
-      _vocabularyRepository.searchVocabularies(deskId, query);
   Future<List<Vocabulary>> getVocabulariesForStudy(int deskId) =>
       _vocabularyRepository.getVocabulariesForStudy(deskId);
   Future<int> updateMasteryLevel(int vocabularyId, int newMasteryLevel,
