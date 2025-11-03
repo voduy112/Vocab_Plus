@@ -71,7 +71,7 @@ class Vocabulary {
     );
     return Vocabulary(
       id: map['id'],
-      deskId: map['desk_id'],
+      deskId: map['deck_id'],
       front: map['front'],
       back: map['back'],
       imageUrl: map['image_url'],
@@ -123,7 +123,7 @@ class Vocabulary {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'desk_id': deskId,
+      'deck_id': deskId,
       'front': front,
       'back': back,
       'image_url': imageUrl,

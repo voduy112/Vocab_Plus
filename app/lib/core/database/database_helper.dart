@@ -25,9 +25,9 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    // Tạo bảng desks
+    // Tạo bảng decks
     await db.execute('''
-      CREATE TABLE desks (
+      CREATE TABLE decks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         color TEXT DEFAULT '#2196F3',
@@ -41,7 +41,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE vocabularies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        desk_id INTEGER NOT NULL,
+        deck_id INTEGER NOT NULL,
         front TEXT NOT NULL,
         back TEXT NOT NULL,
         image_url TEXT,
@@ -67,7 +67,7 @@ class DatabaseHelper {
         updated_at TEXT NOT NULL,
         is_active INTEGER DEFAULT 1,
         card_type TEXT DEFAULT 'basis',
-        FOREIGN KEY (desk_id) REFERENCES desks (id) ON DELETE CASCADE
+        FOREIGN KEY (deck_id) REFERENCES decks (id) ON DELETE CASCADE
       )
     ''');
 
@@ -75,26 +75,26 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE study_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        desk_id INTEGER NOT NULL,
+        deck_id INTEGER NOT NULL,
         vocabulary_id INTEGER NOT NULL,
         session_type TEXT NOT NULL, -- 'learn', 'review', 'test'
         result TEXT NOT NULL, -- 'correct', 'incorrect', 'skipped'
         time_spent INTEGER DEFAULT 0, -- thời gian tính bằng giây
         created_at TEXT NOT NULL,
-        FOREIGN KEY (desk_id) REFERENCES desks (id) ON DELETE CASCADE,
+        FOREIGN KEY (deck_id) REFERENCES decks (id) ON DELETE CASCADE,
         FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id) ON DELETE CASCADE
       )
     ''');
 
     // Tạo indexes để tối ưu hiệu suất
     await db.execute(
-        'CREATE INDEX idx_vocabularies_desk_id ON vocabularies(desk_id)');
+        'CREATE INDEX idx_vocabularies_deck_id ON vocabularies(deck_id)');
     await db.execute(
         'CREATE INDEX idx_vocabularies_next_review ON vocabularies(next_review)');
     await db.execute(
         'CREATE INDEX idx_vocabularies_srs_due ON vocabularies(srs_due)');
     await db.execute(
-        'CREATE INDEX idx_study_sessions_desk_id ON study_sessions(desk_id)');
+        'CREATE INDEX idx_study_sessions_deck_id ON study_sessions(deck_id)');
     await db.execute(
         'CREATE INDEX idx_study_sessions_vocabulary_id ON study_sessions(vocabulary_id)');
 

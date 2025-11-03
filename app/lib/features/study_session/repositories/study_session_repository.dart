@@ -16,12 +16,12 @@ class StudySessionRepository {
     return await db.insert('study_sessions', session.toMap());
   }
 
-  // Lấy tất cả sessions của một desk
+  // Lấy tất cả sessions của một deck
   Future<List<StudySession>> getSessionsByDeskId(int deskId) async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'study_sessions',
-      where: 'desk_id = ?',
+      where: 'deck_id = ?',
       whereArgs: [deskId],
       orderBy: 'created_at DESC',
     );

@@ -85,5 +85,3 @@ class Deck {
         isActive.hashCode;
   }
 }
-
-

@@ -11,12 +11,12 @@ class VocabularyRepository {
     return await db.insert('vocabularies', vocabulary.toMap());
   }
 
-  // Lấy tất cả từ vựng trong một desk
+  // Lấy tất cả từ vựng trong một deck
   Future<List<Vocabulary>> getVocabulariesByDeskId(int deskId) async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'vocabularies',
-      where: 'desk_id = ? AND is_active = ?',
+      where: 'deck_id = ? AND is_active = ?',
       whereArgs: [deskId, 1],
       orderBy: 'created_at DESC',
     );
@@ -70,7 +70,7 @@ class VocabularyRepository {
     final nowIso = DateTime.now().toIso8601String();
     final String sql = '''
       SELECT * FROM vocabularies
-      WHERE desk_id = ? AND is_active = 1 AND (
+      WHERE deck_id = ? AND is_active = 1 AND (
         (srs_due IS NOT NULL AND srs_due <= ?)
         OR (srs_due IS NULL AND (next_review IS NULL OR next_review <= ?))
       )
@@ -152,7 +152,7 @@ class VocabularyRepository {
   Future<int> countMinuteLearning(int deskId) async {
     final db = await _databaseHelper.database;
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND is_active = 1 AND srs_queue = 1 AND srs_left >= 1000',
+      'SELECT COUNT(*) as count FROM vocabularies WHERE deck_id = ? AND is_active = 1 AND srs_queue = 1 AND srs_left >= 1000',
       [deskId],
     );
     return Sqflite.firstIntValue(result) ?? 0;
@@ -162,7 +162,7 @@ class VocabularyRepository {
   Future<int> countNewVocabularies(int deskId) async {
     final db = await _databaseHelper.database;
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM vocabularies WHERE desk_id = ? AND is_active = 1 AND (srs_repetitions IS NULL OR srs_repetitions = 0)',
+      'SELECT COUNT(*) as count FROM vocabularies WHERE deck_id = ? AND is_active = 1 AND (srs_repetitions IS NULL OR srs_repetitions = 0)',
       [deskId],
     );
     return Sqflite.firstIntValue(result) ?? 0;
@@ -184,7 +184,7 @@ class VocabularyRepository {
               (srs_due IS NOT NULL AND DATE(srs_due) BETWEEN DATE(?) AND DATE(?))
            OR (srs_due IS NULL AND next_review IS NOT NULL AND DATE(next_review) BETWEEN DATE(?) AND DATE(?))
         )
-        ${deskId != null ? 'AND desk_id = ?' : ''}
+        ${deskId != null ? 'AND deck_id = ?' : ''}
       GROUP BY DATE(COALESCE(srs_due, next_review))
       ORDER BY day ASC
     ''';

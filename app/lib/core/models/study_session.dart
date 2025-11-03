@@ -25,7 +25,7 @@ class StudySession {
   factory StudySession.fromMap(Map<String, dynamic> map) {
     return StudySession(
       id: map['id'],
-      deskId: map['desk_id'],
+      deskId: map['deck_id'],
       vocabularyId: map['vocabulary_id'],
       sessionType: SessionType.values.firstWhere(
         (e) => e.toString().split('.').last == map['session_type'],
@@ -42,7 +42,7 @@ class StudySession {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'desk_id': deskId,
+      'deck_id': deskId,
       'vocabulary_id': vocabularyId,
       'session_type': sessionType.toString().split('.').last,
       'result': result.toString().split('.').last,
