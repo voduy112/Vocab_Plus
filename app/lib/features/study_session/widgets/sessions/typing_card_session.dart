@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/models/vocabulary.dart';
-import '../../../../core/services/database_service.dart';
+import '../../../../core/models/srs_choice.dart';
 
 class TypingCardSession extends StatefulWidget {
   final Vocabulary vocabulary;

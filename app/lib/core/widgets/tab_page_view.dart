@@ -1,7 +1,7 @@
 // core/widgets/tab_page_view.dart
 import 'package:flutter/material.dart';
 import '../../features/home/views/home_screen.dart';
-import '../../features/desks/views/desk_screen.dart';
+import '../../features/decks/views/deck_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
 import '../../features/search/views/search_screen.dart';
 

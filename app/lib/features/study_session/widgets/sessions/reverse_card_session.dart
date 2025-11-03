@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../../../../core/models/vocabulary.dart';
-import '../../../../core/services/database_service.dart';
+import '../../../../core/models/srs_choice.dart';
 
 class ReverseCardSession extends StatefulWidget {
   final Vocabulary vocabulary;

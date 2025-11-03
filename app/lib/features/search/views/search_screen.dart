@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../controllers/search_controller.dart' as app_search;
 import '../../../data/dictionary/models.dart';
 import '../../../data/dictionary/dictionary_repository.dart';
-import '../../../core/widgets/search.dart';
+import '../../../core/widgets/search_field.dart';
 import 'package:lottie/lottie.dart';
 
 class SearchScreen extends StatefulWidget {

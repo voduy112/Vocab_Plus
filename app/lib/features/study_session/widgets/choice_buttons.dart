@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/database_service.dart';
+import '../../../core/models/srs_choice.dart';
 
 class ChoiceButtons extends StatelessWidget {
   final Map<SrsChoice, String> labels;
