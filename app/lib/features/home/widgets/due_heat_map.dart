@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 // Removed third-party calendar builder; implementing a custom lightweight heatmap below
-import '../../../core/services/database_service.dart';
+import '../../decks/services/vocabulary_service.dart';
 
 class DueHeatMap extends StatefulWidget {
   final DateTime start;
@@ -19,18 +20,29 @@ class _DueHeatMapState extends State<DueHeatMap>
   late DateTime _viewStart;
   late DateTime _viewEnd;
   // Static cache to persist across route changes and widget rebuilds
-  static final Map<DateTime, int> _cache = {};
-  static final Set<int> _yearsCached = {};
+  // Cache key: "deskId_year" -> Map<DateTime, int>
+  static final Map<String, Map<DateTime, int>> _cacheMap = {};
+  static final Map<String, Set<int>> _yearsCachedMap = {};
   bool _isLoading = true;
   DateTime? _selectedDate;
   final Map<DateTime, GlobalKey> _cellKeys = {};
   OverlayEntry? _tooltipEntry;
+  Timer? _tooltipTimer;
+
+  String get _yearsCacheKey => '${widget.deskId ?? 'all'}';
+  Map<DateTime, int> get _cache => _cacheMap[_yearsCacheKey] ?? {};
+  Set<int> get _yearsCached => _yearsCachedMap[_yearsCacheKey] ?? {};
 
   @override
   void initState() {
     super.initState();
     _viewStart = widget.start;
     _viewEnd = widget.end;
+    // Initialize cache for this desk if not exists
+    if (!_cacheMap.containsKey(_yearsCacheKey)) {
+      _cacheMap[_yearsCacheKey] = {};
+      _yearsCachedMap[_yearsCacheKey] = {};
+    }
     // If current year is already cached, render instantly
     if (_yearsCached.contains(_viewStart.year)) {
       _isLoading = false;
@@ -44,6 +56,8 @@ class _DueHeatMapState extends State<DueHeatMap>
 
   @override
   void dispose() {
+    _tooltipTimer?.cancel();
+    _tooltipTimer = null;
     _tooltipEntry?.remove();
     _tooltipEntry = null;
     super.dispose();
@@ -66,15 +80,20 @@ class _DueHeatMapState extends State<DueHeatMap>
     if (_yearsCached.contains(year)) return;
     final DateTime yStart = DateTime(year, 1, 1);
     final DateTime yEnd = DateTime(year, 12, 31);
-    final dbService = DatabaseService();
-    final Map<DateTime, int> data = await dbService.getDueCountsByDateRange(
+    final vocabService = VocabularyService();
+    final Map<DateTime, int> data = await vocabService.getDueCountsByDateRange(
         start: yStart, end: yEnd, deskId: widget.deskId);
-    // Merge into cache
+    // Merge into cache for this desk
+    if (!_cacheMap.containsKey(_yearsCacheKey)) {
+      _cacheMap[_yearsCacheKey] = {};
+      _yearsCachedMap[_yearsCacheKey] = {};
+    }
+    final deskCache = _cacheMap[_yearsCacheKey]!;
     data.forEach((date, count) {
       final DateTime key = DateTime(date.year, date.month, date.day);
-      _cache[key] = count;
+      deskCache[key] = count;
     });
-    _yearsCached.add(year);
+    _yearsCachedMap[_yearsCacheKey]!.add(year);
     if (mounted) setState(() {});
   }
 
@@ -104,6 +123,8 @@ class _DueHeatMapState extends State<DueHeatMap>
   }
 
   void _removeTooltip() {
+    _tooltipTimer?.cancel();
+    _tooltipTimer = null;
     _tooltipEntry?.remove();
     _tooltipEntry = null;
   }
@@ -233,6 +254,17 @@ class _DueHeatMapState extends State<DueHeatMap>
       ),
     );
     Overlay.of(context).insert(_tooltipEntry!);
+
+    // Tự động tắt tooltip sau 5 giây
+    _tooltipTimer?.cancel();
+    _tooltipTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted && _tooltipEntry != null) {
+        setState(() {
+          _selectedDate = null;
+        });
+        _removeTooltip();
+      }
+    });
   }
 
   @override
@@ -467,10 +499,9 @@ class _DueHeatMapState extends State<DueHeatMap>
                         border: isSelected
                             ? Border.all(
                                 color: theme.colorScheme.tertiary, width: 2.2)
-                            : (isToday
-                                ? Border.all(
-                                    color: theme.colorScheme.primary, width: 2)
-                                : null),
+                            : isToday
+                                ? Border.all(color: Colors.blue, width: 2.5)
+                                : null,
                       ),
                     ),
                     // Tooltip shown via OverlayEntry; nothing inline here

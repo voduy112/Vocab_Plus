@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/desk.dart';
+import '../../../core/models/deck.dart';
 import '../../../core/models/vocabulary.dart';
 import '../../../core/models/study_session.dart';
-import '../../../core/services/database_service.dart';
+import '../../../core/models/srs_choice.dart';
+import '../../decks/services/deck_service.dart';
+import '../../decks/services/vocabulary_service.dart';
+import '../services/study_session_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/sessions/basis_card_session.dart';
 import '../widgets/sessions/reverse_card_session.dart';
@@ -11,7 +14,7 @@ import '../widgets/stats_card.dart';
 import '../widgets/choice_buttons.dart';
 
 class StudySessionScreen extends StatefulWidget {
-  final Desk desk;
+  final Deck desk;
   const StudySessionScreen({super.key, required this.desk});
 
   @override
@@ -19,7 +22,9 @@ class StudySessionScreen extends StatefulWidget {
 }
 
 class _StudySessionScreenState extends State<StudySessionScreen> {
-  final DatabaseService _service = DatabaseService();
+  final DeckService _deskService = DeckService();
+  final VocabularyService _vocabService = VocabularyService();
+  final StudySessionService _studyService = StudySessionService();
   List<Vocabulary> _queue = [];
   int _index = 0;
   bool _isLoading = true;
@@ -39,15 +44,16 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   Future<void> _loadQueue() async {
     setState(() => _isLoading = true);
     try {
-      final items = await _service.getVocabulariesForStudy(widget.desk.id!);
+      final items =
+          await _vocabService.getVocabulariesForStudy(widget.desk.id!);
 
       // Tính toán thống kê
-      final deskStats = await _service.getDeskStats(widget.desk.id!);
+      final deskStats = await _deskService.getDeskStats(widget.desk.id!);
       final totalCount = deskStats['total'] ?? 0;
       final reviewCount = deskStats['needReview'] ?? 0; // Số từ tới hạn cần ôn
       final minuteLearning =
-          await _service.countMinuteLearningByDesk(widget.desk.id!);
-      final newCount = await _service.countNewByDesk(widget.desk.id!);
+          await _vocabService.countMinuteLearningByDesk(widget.desk.id!);
+      final newCount = await _vocabService.countNewByDesk(widget.desk.id!);
 
       setState(() {
         _queue = items;
@@ -76,7 +82,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
       return;
     }
     final v = _queue[_index];
-    final labels = _service.previewChoiceLabels(v);
+    final labels = _studyService.previewChoiceLabels(v);
     setState(() => _labels = labels);
   }
 
@@ -89,12 +95,12 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
 
   Future<void> _updateStats() async {
     try {
-      final deskStats = await _service.getDeskStats(widget.desk.id!);
+      final deskStats = await _deskService.getDeskStats(widget.desk.id!);
       final totalCount = deskStats['total'] ?? 0;
       final reviewCount = deskStats['needReview'] ?? 0; // Số từ tới hạn cần ôn
       final minuteLearning =
-          await _service.countMinuteLearningByDesk(widget.desk.id!);
-      final newCount = await _service.countNewByDesk(widget.desk.id!);
+          await _vocabService.countMinuteLearningByDesk(widget.desk.id!);
+      final newCount = await _vocabService.countNewByDesk(widget.desk.id!);
 
       if (mounted) {
         setState(() {
@@ -119,7 +125,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
         setState(() => _isShowingResult = false);
       }
       final bool wasNew = (v.srsRepetitions == 0);
-      final result = await _service.reviewWithChoice(
+      final result = await _studyService.reviewWithChoice(
         vocabularyId: v.id!,
         choice: choice,
         sessionType: SessionType.review,
@@ -156,10 +162,10 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
         setState(() => _labels = const {});
       } else {
         final currentFrontId = _queue[_index].id!;
-        final latest = await _service.getVocabularyById(currentFrontId);
+        final latest = await _studyService.getVocabularyById(currentFrontId);
         if (!mounted) return;
         setState(() {
-          _labels = _service.previewChoiceLabels(latest ?? _queue[_index]);
+          _labels = _studyService.previewChoiceLabels(latest ?? _queue[_index]);
         });
       }
 
