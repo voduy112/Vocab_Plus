@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'core/auth/auth_controller.dart';
 import 'router/app_router.dart';
 import 'data/dictionary/dictionary_repository.dart';
-import 'features/desks/repositories/vocabulary_repository.dart';
-import 'features/desks/repositories/deck_repository.dart';
+import 'features/decks/repositories/vocabulary_repository.dart';
+import 'features/decks/repositories/deck_repository.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
