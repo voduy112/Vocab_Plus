@@ -1,18 +1,18 @@
 import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
-import '../../../core/models/desk.dart';
+import '../../../core/models/deck.dart';
 
-class DeskRepository {
+class DeckRepository {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
 
   // Tạo desk mới
-  Future<int> createDesk(Desk desk) async {
+  Future<int> createDesk(Deck desk) async {
     final db = await _databaseHelper.database;
     return await db.insert('desks', desk.toMap());
   }
 
   // Lấy tất cả desks
-  Future<List<Desk>> getAllDesks() async {
+  Future<List<Deck>> getAllDesks() async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'desks',
@@ -22,12 +22,12 @@ class DeskRepository {
     );
 
     return List.generate(maps.length, (i) {
-      return Desk.fromMap(maps[i]);
+      return Deck.fromMap(maps[i]);
     });
   }
 
   // Lấy desk theo ID
-  Future<Desk?> getDeskById(int id) async {
+  Future<Deck?> getDeskById(int id) async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'desks',
@@ -36,13 +36,13 @@ class DeskRepository {
     );
 
     if (maps.isNotEmpty) {
-      return Desk.fromMap(maps.first);
+      return Deck.fromMap(maps.first);
     }
     return null;
   }
 
   // Cập nhật desk
-  Future<int> updateDesk(Desk desk) async {
+  Future<int> updateDesk(Deck desk) async {
     final db = await _databaseHelper.database;
     return await db.update(
       'desks',
@@ -74,7 +74,7 @@ class DeskRepository {
   }
 
   // Tìm kiếm desks theo tên
-  Future<List<Desk>> searchDesks(String query) async {
+  Future<List<Deck>> searchDesks(String query) async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'desks',
@@ -84,7 +84,7 @@ class DeskRepository {
     );
 
     return List.generate(maps.length, (i) {
-      return Desk.fromMap(maps[i]);
+      return Deck.fromMap(maps[i]);
     });
   }
 
@@ -150,3 +150,5 @@ class DeskRepository {
     };
   }
 }
+
+

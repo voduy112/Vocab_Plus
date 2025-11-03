@@ -1,4 +1,4 @@
-class Desk {
+class Deck {
   final int? id;
   final String name;
   final String color;
@@ -6,7 +6,7 @@ class Desk {
   final DateTime updatedAt;
   final bool isActive;
 
-  Desk({
+  Deck({
     this.id,
     required this.name,
     this.color = '#2196F3',
@@ -16,8 +16,8 @@ class Desk {
   });
 
   // Chuyển đổi từ Map (từ database) sang Desk object
-  factory Desk.fromMap(Map<String, dynamic> map) {
-    return Desk(
+  factory Deck.fromMap(Map<String, dynamic> map) {
+    return Deck(
       id: map['id'],
       name: map['name'],
       color: map['color'] ?? '#2196F3',
@@ -40,7 +40,7 @@ class Desk {
   }
 
   // Tạo bản copy với các thay đổi
-  Desk copyWith({
+  Deck copyWith({
     int? id,
     String? name,
     String? color,
@@ -48,7 +48,7 @@ class Desk {
     DateTime? updatedAt,
     bool? isActive,
   }) {
-    return Desk(
+    return Deck(
       id: id ?? this.id,
       name: name ?? this.name,
       color: color ?? this.color,
@@ -60,13 +60,13 @@ class Desk {
 
   @override
   String toString() {
-    return 'Desk(id: $id, name: $name, color: $color, createdAt: $createdAt, updatedAt: $updatedAt, isActive: $isActive)';
+    return 'Deck(id: $id, name: $name, color: $color, createdAt: $createdAt, updatedAt: $updatedAt, isActive: $isActive)';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is Desk &&
+    return other is Deck &&
         other.id == id &&
         other.name == name &&
         other.color == color &&
@@ -85,3 +85,5 @@ class Desk {
         isActive.hashCode;
   }
 }
+
+

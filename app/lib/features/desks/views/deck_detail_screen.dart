@@ -1,34 +1,33 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/desk.dart';
+import '../../../core/models/deck.dart';
 import '../../../core/models/vocabulary.dart';
-import '../../../core/services/database_service.dart';
-import '../widgets/stat_card.dart';
+import '../../desks/services/deck_service.dart';
+import '../../desks/services/vocabulary_service.dart';
 import '../../study_session/views/study_session_screen.dart';
 import '../widgets/vocabulary_card.dart';
 import 'package:go_router/go_router.dart';
 
-class DeskDetailScreen extends StatefulWidget {
-  final Desk desk;
+class DeckDetailScreen extends StatefulWidget {
+  final Deck desk;
 
-  const DeskDetailScreen({
+  const DeckDetailScreen({
     super.key,
     required this.desk,
   });
 
   @override
-  State<DeskDetailScreen> createState() => _DeskDetailScreenState();
+  State<DeckDetailScreen> createState() => _DeckDetailScreenState();
 }
 
-class _DeskDetailScreenState extends State<DeskDetailScreen> {
-  final DatabaseService _databaseService = DatabaseService();
+class _DeckDetailScreenState extends State<DeckDetailScreen> {
+  final DeckService _deskService = DeckService();
+  final VocabularyService _vocabularyService = VocabularyService();
   final TextEditingController _searchController = TextEditingController();
 
   List<Vocabulary> _vocabularies = [];
   List<Vocabulary> _filteredVocabularies = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  Map<String, dynamic>? _deskStats;
-  int _minuteLearningCount = 0;
 
   @override
   void initState() {
@@ -47,7 +46,7 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final vocabularies =
-          await _databaseService.getVocabulariesByDeskId(widget.desk.id!);
+          await _vocabularyService.getVocabulariesByDeskId(widget.desk.id!);
       setState(() {
         _vocabularies = vocabularies;
         _filteredVocabularies = vocabularies;
@@ -65,13 +64,8 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
 
   Future<void> _loadDeskStats() async {
     try {
-      final stats = await _databaseService.getDeskStats(widget.desk.id!);
-      final minuteLearning =
-          await _databaseService.countMinuteLearningByDesk(widget.desk.id!);
-      setState(() {
-        _deskStats = stats;
-        _minuteLearningCount = minuteLearning;
-      });
+      await _deskService.getDeskStats(widget.desk.id!);
+      await _vocabularyService.countMinuteLearningByDesk(widget.desk.id!);
     } catch (e) {
       print('Lỗi khi tải thống kê desk: $e');
     }
@@ -135,7 +129,7 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
 
     if (confirmed == true) {
       try {
-        await _databaseService.deleteVocabulary(vocabulary.id!);
+        await _vocabularyService.deleteVocabulary(vocabulary.id!);
         await _loadVocabularies();
         await _loadDeskStats();
 
@@ -185,46 +179,6 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
       ),
       body: Column(
         children: [
-          // Header với thống kê
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color:
-                  Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF')))
-                      .withOpacity(0.1),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_deskStats != null) ...[
-                  Row(
-                    children: [
-                      StatCard(
-                        title: 'Từ mới',
-                        value:
-                            '${(_deskStats!['total'] as int) - (_deskStats!['learned'] as int) - _minuteLearningCount}',
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(width: 12),
-                      StatCard(
-                        title: 'Học',
-                        value: '$_minuteLearningCount',
-                        color: Colors.cyan,
-                      ),
-                      const SizedBox(width: 12),
-                      StatCard(
-                        title: 'Cần ôn',
-                        value: '${_deskStats!['needReview']}',
-                        color: Colors.orange,
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-
           // Search bar
           Padding(
             padding: const EdgeInsets.all(16),
@@ -314,17 +268,26 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _filteredVocabularies.length,
-                        itemBuilder: (context, index) {
-                          final vocabulary = _filteredVocabularies[index];
-                          return VocabularyCard(
-                            vocabulary: vocabulary,
-                            onTap: () => _editVocabulary(vocabulary),
-                            onDelete: () => _deleteVocabulary(vocabulary),
-                          );
-                        },
+                    : Column(
+                        children: [
+                          // Header labels and list
+                          Expanded(
+                            child: ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: _filteredVocabularies.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final vocabulary = _filteredVocabularies[index];
+                                return VocabularyCard(
+                                  vocabulary: vocabulary,
+                                  onTap: () => _editVocabulary(vocabulary),
+                                  onDelete: () => _deleteVocabulary(vocabulary),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
           ),
         ],
@@ -338,3 +301,5 @@ class _DeskDetailScreenState extends State<DeskDetailScreen> {
     );
   }
 }
+
+

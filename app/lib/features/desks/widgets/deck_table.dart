@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/desk.dart';
+import '../../../core/models/deck.dart';
 import 'deck_row.dart';
 
 enum DeskSortOption {
@@ -10,14 +10,14 @@ enum DeskSortOption {
 }
 
 class DeckTable extends StatelessWidget {
-  final List<Desk> desks;
+  final List<Deck> desks;
   final Map<int, Map<String, dynamic>> deskStats;
   final bool isLoading;
   final String searchQuery;
   final DeskSortOption sortOption;
   final VoidCallback onNameSortToggle;
-  final Function(Desk) onDeckTap;
-  final Function(Desk) onDeckLongPress;
+  final Function(Deck) onDeckTap;
+  final Function(Deck) onDeckLongPress;
 
   const DeckTable({
     super.key,

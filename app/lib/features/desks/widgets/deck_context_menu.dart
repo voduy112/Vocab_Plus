@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/desk.dart';
+import '../../../core/models/deck.dart';
 import '../views/add_vocabulary_screen.dart';
+import '../views/deck_detail_screen.dart';
 import '../../../core/widgets/context_menu_scaffold.dart';
 
 class DeckContextMenu extends StatelessWidget {
-  final Desk desk;
+  final Deck desk;
   final VoidCallback onDelete;
 
   const DeckContextMenu({
@@ -50,6 +51,22 @@ class DeckContextMenu extends StatelessWidget {
           ListView(
             shrinkWrap: true,
             children: [
+              ListTile(
+                leading: Icon(
+                  Icons.list,
+                  color: Colors.blue[600],
+                ),
+                title: const Text('Xem từ vựng'),
+                subtitle: const Text('Xem và quản lý danh sách từ vựng'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => DeckDetailScreen(desk: desk),
+                    ),
+                  );
+                },
+              ),
               ListTile(
                 leading: Icon(
                   Icons.add,

@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../../../core/widgets/context_menu_scaffold.dart';
 import '../../../core/widgets/custom_form_field.dart';
+import '../../../core/models/deck.dart';
+import '../repositories/deck_repository.dart';
 
-class CreateDeskDialog extends StatefulWidget {
-  const CreateDeskDialog({super.key});
+class CreateDeckDialog extends StatefulWidget {
+  const CreateDeckDialog({super.key});
 
   @override
-  State<CreateDeskDialog> createState() => _CreateDeskDialogState();
+  State<CreateDeckDialog> createState() => _CreateDeckDialogState();
 }
 
-class _CreateDeskDialogState extends State<CreateDeskDialog> {
+class _CreateDeckDialogState extends State<CreateDeckDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   String _selectedColor = '#2196F3';
@@ -192,13 +195,20 @@ class _CreateDeskDialogState extends State<CreateDeskDialog> {
                     Expanded(
                       child: FilledButton(
                         onPressed: _isValid
-                            ? () {
-                                if (_formKey.currentState!.validate()) {
-                                  final result = <String, String?>{
-                                    'name': _nameController.text.trim(),
-                                    'color': _selectedColor,
-                                  };
-                                  Navigator.of(context).pop(result);
+                            ? () async {
+                                if (!_formKey.currentState!.validate()) return;
+                                final repo = context.read<DeckRepository>();
+                                final now = DateTime.now();
+                                final desk = Deck(
+                                  name: _nameController.text.trim(),
+                                  color: _selectedColor,
+                                  createdAt: now,
+                                  updatedAt: now,
+                                );
+                                final id = await repo.createDesk(desk);
+                                final created = desk.copyWith(id: id);
+                                if (context.mounted) {
+                                  Navigator.of(context).pop(created);
                                 }
                               }
                             : null,
@@ -215,3 +225,5 @@ class _CreateDeskDialogState extends State<CreateDeskDialog> {
     );
   }
 }
+
+
