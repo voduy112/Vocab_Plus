@@ -14,15 +14,15 @@ import '../widgets/stats_card.dart';
 import '../widgets/choice_buttons.dart';
 
 class StudySessionScreen extends StatefulWidget {
-  final Deck desk;
-  const StudySessionScreen({super.key, required this.desk});
+  final Deck deck;
+  const StudySessionScreen({super.key, required this.deck});
 
   @override
   State<StudySessionScreen> createState() => _StudySessionScreenState();
 }
 
 class _StudySessionScreenState extends State<StudySessionScreen> {
-  final DeckService _deskService = DeckService();
+  final DeckService _deckService = DeckService();
   final VocabularyService _vocabService = VocabularyService();
   final StudySessionService _studyService = StudySessionService();
   List<Vocabulary> _queue = [];
@@ -45,15 +45,15 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     setState(() => _isLoading = true);
     try {
       final items =
-          await _vocabService.getVocabulariesForStudy(widget.desk.id!);
+          await _vocabService.getVocabulariesForStudyByDeck(widget.deck.id!);
 
       // Tính toán thống kê
-      final deskStats = await _deskService.getDeskStats(widget.desk.id!);
+      final deskStats = await _deckService.getDeckStats(widget.deck.id!);
       final totalCount = deskStats['total'] ?? 0;
       final reviewCount = deskStats['needReview'] ?? 0; // Số từ tới hạn cần ôn
       final minuteLearning =
-          await _vocabService.countMinuteLearningByDesk(widget.desk.id!);
-      final newCount = await _vocabService.countNewByDesk(widget.desk.id!);
+          await _vocabService.countMinuteLearningByDeck(widget.deck.id!);
+      final newCount = await _vocabService.countNewByDeck(widget.deck.id!);
 
       setState(() {
         _queue = items;
@@ -95,12 +95,12 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
 
   Future<void> _updateStats() async {
     try {
-      final deskStats = await _deskService.getDeskStats(widget.desk.id!);
+      final deskStats = await _deckService.getDeckStats(widget.deck.id!);
       final totalCount = deskStats['total'] ?? 0;
       final reviewCount = deskStats['needReview'] ?? 0; // Số từ tới hạn cần ôn
       final minuteLearning =
-          await _vocabService.countMinuteLearningByDesk(widget.desk.id!);
-      final newCount = await _vocabService.countNewByDesk(widget.desk.id!);
+          await _vocabService.countMinuteLearningByDeck(widget.deck.id!);
+      final newCount = await _vocabService.countNewByDeck(widget.deck.id!);
 
       if (mounted) {
         setState(() {
@@ -185,43 +185,48 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF')));
-    return Scaffold(
-      appBar: _isLoading || _queue.isEmpty
-          ? AppBar(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-              title: Text(widget.desk.name),
-            )
-          : AppBar(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-              leading: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              title: Text(widget.desk.name),
-              bottom: PreferredSize(
-                preferredSize: Size.fromHeight(50),
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: StatsCard(
-                    reviewCount: _reviewCount,
-                    minuteLearningCount: _minuteLearningCount,
-                    newCount: _newCount,
+    final color = Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF')));
+    return WillPopScope(
+        onWillPop: () async {
+          Navigator.of(context).pop(true);
+          return false;
+        },
+        child: Scaffold(
+          appBar: _isLoading || _queue.isEmpty
+              ? AppBar(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  title: Text(widget.deck.name),
+                )
+              : AppBar(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  leading: IconButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  title: Text(widget.deck.name),
+                  bottom: PreferredSize(
+                    preferredSize: Size.fromHeight(50),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: StatsCard(
+                        reviewCount: _reviewCount,
+                        minuteLearningCount: _minuteLearningCount,
+                        newCount: _newCount,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _queue.isEmpty
-              ? const EmptyState(
-                  message: 'Hết từ để học/ôn!',
-                  icon: Icons.celebration,
-                )
-              : _buildCard(color),
-    );
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _queue.isEmpty
+                  ? const EmptyState(
+                      message: 'Hết từ để học/ôn!',
+                      icon: Icons.celebration,
+                    )
+                  : _buildCard(color),
+        ));
   }
 
   Widget _buildCard(Color color) {

@@ -34,7 +34,7 @@ class FeatureGrid extends StatelessWidget {
                 bgColor: Colors.purple.shade50,
                 iconColor: Colors.purple.shade700,
                 onTap: () {
-                  context.go('/tabs/desks');
+                  context.go('/tabs/decks');
                 },
               ),
             ),

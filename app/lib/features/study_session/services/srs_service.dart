@@ -237,5 +237,3 @@ class SrsService {
     return labels;
   }
 }
-
-

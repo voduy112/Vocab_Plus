@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/views/home_screen.dart';
-import '../features/decks/views/deck_screen.dart';
+import '../../features/decks/views/deck_screen.dart';
 import '../features/decks/views/add_vocabulary_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
 import '../../features/search/views/search_screen.dart';
@@ -18,7 +18,7 @@ import '../../core/models/vocabulary.dart';
 GoRouter createRouter(AuthController auth) {
   return GoRouter(
     initialLocation:
-        '/tabs/main', // Có thể thay đổi thành '/tabs/desks' hoặc '/tabs/profile'
+        '/tabs/main', // Có thể thay đổi thành '/tabs/decks' hoặc '/tabs/profile'
     debugLogDiagnostics: true, // Hiển thị log navigation để debug
     routes: [
       StatefulShellRoute.indexedStack(
@@ -59,12 +59,12 @@ GoRouter createRouter(AuthController auth) {
                   const NoTransitionPage(child: HomeScreen()),
             ),
           ]),
-          // Tab 2: Desks
+          // Tab 2: Decks
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/tabs/desks',
+              path: '/tabs/decks',
               pageBuilder: (c, s) =>
-                  const NoTransitionPage(child: DesksScreen()),
+                  const NoTransitionPage(child: DecksScreen()),
             ),
           ]),
           // Tab 3: Search
@@ -95,17 +95,17 @@ GoRouter createRouter(AuthController auth) {
       GoRoute(
         path: '/add-vocabulary',
         builder: (context, state) {
-          final desk = state.extra as Deck;
-          return AddVocabularyScreen(desk: desk);
+          final deck = state.extra as Deck;
+          return AddVocabularyScreen(deck: deck);
         },
       ),
       GoRoute(
         path: '/edit-vocabulary',
         builder: (context, state) {
           final Map<String, dynamic> args = state.extra as Map<String, dynamic>;
-          final desk = args['desk'] as Deck;
+          final deck = args['deck'] as Deck;
           final vocabulary = args['vocabulary'] as Vocabulary;
-          return AddVocabularyScreen(desk: desk, vocabulary: vocabulary);
+          return AddVocabularyScreen(deck: deck, vocabulary: vocabulary);
         },
       ),
     ],

@@ -8,11 +8,11 @@ import '../widgets/vocabulary_card.dart';
 import 'package:go_router/go_router.dart';
 
 class DeckDetailScreen extends StatefulWidget {
-  final Deck desk;
+  final Deck deck;
 
   const DeckDetailScreen({
     super.key,
-    required this.desk,
+    required this.deck,
   });
 
   @override
@@ -20,7 +20,7 @@ class DeckDetailScreen extends StatefulWidget {
 }
 
 class _DeckDetailScreenState extends State<DeckDetailScreen> {
-  final DeckService _deskService = DeckService();
+  final DeckService _deckService = DeckService();
   final VocabularyService _vocabularyService = VocabularyService();
   final TextEditingController _searchController = TextEditingController();
 
@@ -33,7 +33,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void initState() {
     super.initState();
     _loadVocabularies();
-    _loadDeskStats();
+    _loadDeckStats();
   }
 
   @override
@@ -46,7 +46,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final vocabularies =
-          await _vocabularyService.getVocabulariesByDeskId(widget.desk.id!);
+          await _vocabularyService.getVocabulariesByDeckId(widget.deck.id!);
       setState(() {
         _vocabularies = vocabularies;
         _filteredVocabularies = vocabularies;
@@ -62,12 +62,12 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     }
   }
 
-  Future<void> _loadDeskStats() async {
+  Future<void> _loadDeckStats() async {
     try {
-      await _deskService.getDeskStats(widget.desk.id!);
-      await _vocabularyService.countMinuteLearningByDesk(widget.desk.id!);
+      await _deckService.getDeckStats(widget.deck.id!);
+      await _vocabularyService.countMinuteLearningByDeck(widget.deck.id!);
     } catch (e) {
-      print('Lỗi khi tải thống kê desk: $e');
+      print('Lỗi khi tải thống kê deck: $e');
     }
   }
 
@@ -88,23 +88,23 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
 
   Future<void> _addNewVocabulary() async {
     final result =
-        await context.push<bool>('/add-vocabulary', extra: widget.desk);
+        await context.push<bool>('/add-vocabulary', extra: widget.deck);
 
     if (result == true && mounted) {
       await _loadVocabularies();
-      await _loadDeskStats();
+      await _loadDeckStats();
     }
   }
 
   Future<void> _editVocabulary(Vocabulary vocabulary) async {
     final result = await context.push<bool>(
       '/edit-vocabulary',
-      extra: {'desk': widget.desk, 'vocabulary': vocabulary},
+      extra: {'deck': widget.deck, 'vocabulary': vocabulary},
     );
 
     if (result == true && mounted) {
       await _loadVocabularies();
-      await _loadDeskStats();
+      await _loadDeckStats();
     }
   }
 
@@ -131,7 +131,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       try {
         await _vocabularyService.deleteVocabulary(vocabulary.id!);
         await _loadVocabularies();
-        await _loadDeskStats();
+        await _loadDeckStats();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -152,20 +152,20 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.desk.name),
+        title: Text(widget.deck.name),
         backgroundColor:
-            Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF'))),
+            Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF'))),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             onPressed: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => StudySessionScreen(desk: widget.desk),
+                  builder: (_) => StudySessionScreen(deck: widget.deck),
                 ),
               );
               // Refresh thống kê sau khi học xong
-              await _loadDeskStats();
+              await _loadDeckStats();
             },
             icon: const Icon(Icons.play_arrow_rounded),
             tooltip: 'Bắt đầu học',
@@ -295,7 +295,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _addNewVocabulary,
         backgroundColor:
-            Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF'))),
+            Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF'))),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

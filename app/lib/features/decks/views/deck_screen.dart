@@ -1,4 +1,4 @@
-// features/desks/deck_screen.dart
+// features/decks/deck_screen.dart
 import 'package:flutter/material.dart';
 import '../../../core/models/deck.dart';
 import '../services/deck_service.dart';
@@ -9,21 +9,21 @@ import '../widgets/featured_card.dart';
 import '../widgets/deck_table.dart';
 import '../widgets/deck_context_menu.dart';
 
-class DesksScreen extends StatefulWidget {
-  const DesksScreen({super.key});
+class DecksScreen extends StatefulWidget {
+  const DecksScreen({super.key});
 
   @override
-  State<DesksScreen> createState() => _DesksScreenState();
+  State<DecksScreen> createState() => _DecksScreenState();
 }
 
-class _DesksScreenState extends State<DesksScreen>
+class _DecksScreenState extends State<DecksScreen>
     with AutomaticKeepAliveClientMixin {
-  final DeckService _deskService = DeckService();
+  final DeckService _deckService = DeckService();
   final TextEditingController _searchController = TextEditingController();
 
-  List<Deck> _desks = [];
-  List<Deck> _filteredDesks = [];
-  Map<int, Map<String, dynamic>> _deskStats = {};
+  List<Deck> _decks = [];
+  List<Deck> _filteredDecks = [];
+  Map<int, Map<String, dynamic>> _deckStats = {};
   bool _isLoading = true;
   bool _hasLoadedData = false;
   bool _isSearchVisible = false;
@@ -36,7 +36,7 @@ class _DesksScreenState extends State<DesksScreen>
   @override
   void initState() {
     super.initState();
-    _loadDesks();
+    _loadDecks();
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -46,23 +46,23 @@ class _DesksScreenState extends State<DesksScreen>
     super.dispose();
   }
 
-  Future<void> _loadDesks({bool forceReload = false}) async {
+  Future<void> _loadDecks({bool forceReload = false}) async {
     if (_hasLoadedData && !forceReload) {
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final desks = await _deskService.getAllDesks();
+      final decks = await _deckService.getAllDecks();
       if (mounted) {
         final Map<int, Map<String, dynamic>> statsMap = {};
-        for (final desk in desks) {
-          if (desk.id != null) {
+        for (final deck in decks) {
+          if (deck.id != null) {
             try {
-              final stats = await _deskService.getDeskStats(desk.id!);
-              statsMap[desk.id!] = stats;
+              final stats = await _deckService.getDeckStats(deck.id!);
+              statsMap[deck.id!] = stats;
             } catch (e) {
-              statsMap[desk.id!] = {
+              statsMap[deck.id!] = {
                 'total': 0,
                 'learned': 0,
                 'mastered': 0,
@@ -75,13 +75,13 @@ class _DesksScreenState extends State<DesksScreen>
         }
 
         setState(() {
-          _desks = desks;
-          _filteredDesks = desks;
-          _deskStats = statsMap;
+          _decks = decks;
+          _filteredDecks = decks;
+          _deckStats = statsMap;
           _isLoading = false;
           _hasLoadedData = true;
         });
-        _sortDesks();
+        _sortDecks();
       }
     } catch (e) {
       if (mounted) {
@@ -93,9 +93,9 @@ class _DesksScreenState extends State<DesksScreen>
     }
   }
 
-  void _sortDesks() {
+  void _sortDecks() {
     setState(() {
-      _filteredDesks.sort((a, b) {
+      _filteredDecks.sort((a, b) {
         switch (_sortOption) {
           case DeskSortOption.nameAsc:
             return a.name.toLowerCase().compareTo(b.name.toLowerCase());
@@ -118,7 +118,7 @@ class _DesksScreenState extends State<DesksScreen>
         _sortOption = DeskSortOption.nameAsc;
       }
     });
-    _sortDesks();
+    _sortDecks();
   }
 
   void _toggleSearch() {
@@ -127,8 +127,8 @@ class _DesksScreenState extends State<DesksScreen>
       if (!_isSearchVisible) {
         _searchController.clear();
         _searchQuery = '';
-        _filteredDesks = _desks;
-        _sortDesks();
+        _filteredDecks = _decks;
+        _sortDecks();
       }
     });
   }
@@ -137,18 +137,18 @@ class _DesksScreenState extends State<DesksScreen>
     setState(() {
       _searchQuery = _searchController.text;
       if (_searchQuery.isEmpty) {
-        _filteredDesks = _desks;
+        _filteredDecks = _decks;
       } else {
-        _filteredDesks = _desks
-            .where((desk) =>
-                desk.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        _filteredDecks = _decks
+            .where((deck) =>
+                deck.name.toLowerCase().contains(_searchQuery.toLowerCase()))
             .toList();
       }
-      _sortDesks();
+      _sortDecks();
     });
   }
 
-  Future<void> _createNewDesk() async {
+  Future<void> _createNewDeck() async {
     final result = await showModalBottomSheet<Deck?>(
       context: context,
       isScrollControlled: true,
@@ -156,7 +156,7 @@ class _DesksScreenState extends State<DesksScreen>
       builder: (context) => const CreateDeckDialog(),
     );
     if (result != null) {
-      await _loadDesks(forceReload: true);
+      await _loadDecks(forceReload: true);
     }
   }
 
@@ -181,7 +181,7 @@ class _DesksScreenState extends State<DesksScreen>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: InkWell(
-                      onTap: _createNewDesk,
+                      onTap: _createNewDeck,
                       borderRadius: BorderRadius.circular(8),
                       child:
                           const Icon(Icons.add, size: 20, color: Colors.white),
@@ -272,9 +272,9 @@ class _DesksScreenState extends State<DesksScreen>
     int totalLearned = 0;
     int totalDue = 0;
 
-    for (final desk in _desks) {
-      if (desk.id != null && _deskStats.containsKey(desk.id)) {
-        final stats = _deskStats[desk.id!]!;
+    for (final deck in _decks) {
+      if (deck.id != null && _deckStats.containsKey(deck.id)) {
+        final stats = _deckStats[deck.id!]!;
         totalWords += stats['total'] as int;
         totalLearned += stats['learned'] as int;
         totalDue += stats['needReview'] as int;
@@ -296,13 +296,13 @@ class _DesksScreenState extends State<DesksScreen>
 
   Widget _buildDeckTable() {
     return DeckTable(
-      desks: _filteredDesks,
-      deskStats: _deskStats,
+      desks: _filteredDecks,
+      deskStats: _deckStats,
       isLoading: _isLoading,
       searchQuery: _searchQuery,
       sortOption: _sortOption,
       onNameSortToggle: _toggleNameSort,
-      onDeckTap: _navigateToDeskDetail,
+      onDeckTap: _navigateToDeckDetail,
       onDeckLongPress: _showDeckContextMenu,
     );
   }
@@ -317,7 +317,7 @@ class _DesksScreenState extends State<DesksScreen>
             _buildHeader(),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () => _loadDesks(forceReload: true),
+                onRefresh: () => _loadDecks(forceReload: true),
                 child: ListView(
                   children: [
                     _buildFeaturedCards(),
@@ -333,26 +333,26 @@ class _DesksScreenState extends State<DesksScreen>
     );
   }
 
-  void _navigateToDeskDetail(Deck desk) {
+  void _navigateToDeckDetail(Deck desk) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => DeckOverviewScreen(desk: desk),
+        builder: (context) => DeckOverviewScreen(deck: desk),
       ),
     );
   }
 
-  void _showDeckContextMenu(Deck desk) {
+  void _showDeckContextMenu(Deck deck) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => DeckContextMenu(
-        desk: desk,
-        onDelete: () => _deleteDesk(desk),
+        deck: deck,
+        onDelete: () => _deleteDeck(deck),
       ),
     );
   }
 
-  Future<void> _deleteDesk(Deck desk) async {
+  Future<void> _deleteDeck(Deck deck) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -361,7 +361,7 @@ class _DesksScreenState extends State<DesksScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Bạn có chắc chắn muốn xóa deck "${desk.name}"?'),
+            Text('Bạn có chắc chắn muốn xóa deck "${deck.name}"?'),
             const SizedBox(height: 8),
             const Text(
               'Hành động này sẽ xóa deck và tất cả từ vựng bên trong. Không thể hoàn tác.',
@@ -390,8 +390,8 @@ class _DesksScreenState extends State<DesksScreen>
 
     if (confirmed == true) {
       try {
-        await _deskService.deleteDesk(desk.id!);
-        await _loadDesks(forceReload: true);
+        await _deckService.deleteDeck(deck.id!);
+        await _loadDecks(forceReload: true);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -400,7 +400,7 @@ class _DesksScreenState extends State<DesksScreen>
                 children: [
                   Icon(Icons.check_circle, color: Colors.green[600]),
                   const SizedBox(width: 8),
-                  Text('Đã xóa deck "${desk.name}" thành công'),
+                  Text('Đã xóa deck "${deck.name}" thành công'),
                 ],
               ),
               backgroundColor: Colors.green[50],

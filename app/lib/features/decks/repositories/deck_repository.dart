@@ -6,13 +6,13 @@ class DeckRepository {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
 
   // Tạo deck mới
-  Future<int> createDesk(Deck desk) async {
+  Future<int> createDeck(Deck desk) async {
     final db = await _databaseHelper.database;
     return await db.insert('decks', desk.toMap());
   }
 
   // Lấy tất cả decks
-  Future<List<Deck>> getAllDesks() async {
+  Future<List<Deck>> getAllDecks() async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'decks',
@@ -27,7 +27,7 @@ class DeckRepository {
   }
 
   // Lấy deck theo ID
-  Future<Deck?> getDeskById(int id) async {
+  Future<Deck?> getDeckById(int id) async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'decks',
@@ -42,7 +42,7 @@ class DeckRepository {
   }
 
   // Cập nhật deck
-  Future<int> updateDesk(Deck desk) async {
+  Future<int> updateDeck(Deck desk) async {
     final db = await _databaseHelper.database;
     return await db.update(
       'decks',
@@ -53,7 +53,7 @@ class DeckRepository {
   }
 
   // Xóa deck (soft delete)
-  Future<int> deleteDesk(int id) async {
+  Future<int> deleteDeck(int id) async {
     final db = await _databaseHelper.database;
     return await db.update(
       'decks',
@@ -64,7 +64,7 @@ class DeckRepository {
   }
 
   // Xóa deck vĩnh viễn (hard delete)
-  Future<int> permanentlyDeleteDesk(int id) async {
+  Future<int> permanentlyDeleteDeck(int id) async {
     final db = await _databaseHelper.database;
     return await db.delete(
       'decks',
@@ -74,7 +74,7 @@ class DeckRepository {
   }
 
   // Tìm kiếm decks theo tên
-  Future<List<Deck>> searchDesks(String query) async {
+  Future<List<Deck>> searchDecks(String query) async {
     final db = await _databaseHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'decks',
@@ -89,7 +89,7 @@ class DeckRepository {
   }
 
   // Lấy thống kê deck
-  Future<Map<String, dynamic>> getDeskStats(int deskId) async {
+  Future<Map<String, dynamic>> getDeckStats(int deskId) async {
     final db = await _databaseHelper.database;
 
     // Tổng số từ vựng

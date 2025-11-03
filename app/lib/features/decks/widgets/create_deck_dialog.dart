@@ -205,7 +205,7 @@ class _CreateDeckDialogState extends State<CreateDeckDialog> {
                                   createdAt: now,
                                   updatedAt: now,
                                 );
-                                final id = await repo.createDesk(desk);
+                                final id = await repo.createDeck(desk);
                                 final created = desk.copyWith(id: id);
                                 if (context.mounted) {
                                   Navigator.of(context).pop(created);

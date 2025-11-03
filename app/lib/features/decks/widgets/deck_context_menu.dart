@@ -5,12 +5,12 @@ import '../views/deck_detail_screen.dart';
 import '../../../core/widgets/context_menu_scaffold.dart';
 
 class DeckContextMenu extends StatelessWidget {
-  final Deck desk;
+  final Deck deck;
   final VoidCallback onDelete;
 
   const DeckContextMenu({
     super.key,
-    required this.desk,
+    required this.deck,
     required this.onDelete,
   });
 
@@ -30,14 +30,14 @@ class DeckContextMenu extends StatelessWidget {
                   height: 12,
                   decoration: BoxDecoration(
                     color:
-                        Color(int.parse(desk.color.replaceFirst('#', '0xFF'))),
+                        Color(int.parse(deck.color.replaceFirst('#', '0xFF'))),
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    desk.name,
+                    deck.name,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -62,7 +62,7 @@ class DeckContextMenu extends StatelessWidget {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => DeckDetailScreen(desk: desk),
+                      builder: (context) => DeckDetailScreen(deck: deck),
                     ),
                   );
                 },
@@ -78,7 +78,7 @@ class DeckContextMenu extends StatelessWidget {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => AddVocabularyScreen(desk: desk),
+                      builder: (context) => AddVocabularyScreen(deck: deck),
                     ),
                   );
                 },

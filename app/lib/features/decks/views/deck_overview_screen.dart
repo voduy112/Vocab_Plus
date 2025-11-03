@@ -7,11 +7,11 @@ import '../../study_session/views/study_session_screen.dart';
 import '../../home/widgets/due_heat_map.dart';
 
 class DeckOverviewScreen extends StatefulWidget {
-  final Deck desk;
+  final Deck deck;
 
   const DeckOverviewScreen({
     super.key,
-    required this.desk,
+    required this.deck,
   });
 
   @override
@@ -19,10 +19,10 @@ class DeckOverviewScreen extends StatefulWidget {
 }
 
 class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
-  final DeckService _deskService = DeckService();
+  final DeckService _deckService = DeckService();
   final VocabularyService _vocabularyService = VocabularyService();
 
-  Map<String, dynamic>? _deskStats;
+  Map<String, dynamic>? _deckStats;
   int _minuteLearningCount = 0;
   int _newCount = 0;
   // ignore: unused_field
@@ -43,16 +43,16 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final stats = await _deskService.getDeskStats(widget.desk.id!);
+      final stats = await _deckService.getDeckStats(widget.deck.id!);
       final minuteLearning =
-          await _vocabularyService.countMinuteLearningByDesk(widget.desk.id!);
-      final newCount = await _vocabularyService.countNewByDesk(widget.desk.id!);
+          await _vocabularyService.countMinuteLearningByDeck(widget.deck.id!);
+      final newCount = await _vocabularyService.countNewByDeck(widget.deck.id!);
 
       final learningMetrics = await _calculateLearningMetrics();
 
       if (mounted) {
         setState(() {
-          _deskStats = stats;
+          _deckStats = stats;
           _minuteLearningCount = minuteLearning;
           _newCount = newCount;
           _dailyAverage = learningMetrics['dailyAverage'] ?? 0;
@@ -84,7 +84,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   Future<void> _startStudySession() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => StudySessionScreen(desk: widget.desk),
+        builder: (_) => StudySessionScreen(deck: widget.deck),
       ),
     );
     await _loadData();
@@ -92,7 +92,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
 
   Future<void> _addNewVocabulary() async {
     final result =
-        await context.push<bool>('/add-vocabulary', extra: widget.desk);
+        await context.push<bool>('/add-vocabulary', extra: widget.deck);
 
     if (result == true && mounted) {
       await _loadData();
@@ -145,7 +145,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
         ),
         Expanded(
           child: Text(
-            widget.desk.name,
+            widget.deck.name,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -162,10 +162,6 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
               tooltip: 'Thêm từ vựng',
             ),
             IconButton(
-              icon: Icon(Icons.sort, color: Colors.grey[600]),
-              onPressed: () {},
-            ),
-            IconButton(
               icon: Icon(Icons.favorite_border, color: Colors.grey[600]),
               onPressed: () {},
             ),
@@ -176,8 +172,8 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   }
 
   Widget _buildLearningStatus() {
-    if (_deskStats == null) return const SizedBox.shrink();
-    final needReview = _deskStats!['needReview'] as int;
+    if (_deckStats == null) return const SizedBox.shrink();
+    final needReview = _deckStats!['needReview'] as int;
 
     return Row(
       children: [
@@ -258,7 +254,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
     return DueHeatMap(
       start: start,
       end: end,
-      deskId: widget.desk.id,
+      deckId: widget.deck.id,
     );
   }
 

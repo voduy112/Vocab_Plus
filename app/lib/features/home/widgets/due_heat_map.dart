@@ -6,10 +6,10 @@ import '../../decks/services/vocabulary_service.dart';
 class DueHeatMap extends StatefulWidget {
   final DateTime start;
   final DateTime end;
-  final int? deskId;
+  final int? deckId;
 
   const DueHeatMap(
-      {super.key, required this.start, required this.end, this.deskId});
+      {super.key, required this.start, required this.end, this.deckId});
 
   @override
   State<DueHeatMap> createState() => _DueHeatMapState();
@@ -20,7 +20,7 @@ class _DueHeatMapState extends State<DueHeatMap>
   late DateTime _viewStart;
   late DateTime _viewEnd;
   // Static cache to persist across route changes and widget rebuilds
-  // Cache key: "deskId_year" -> Map<DateTime, int>
+  // Cache key: "deckId_year" -> Map<DateTime, int>
   static final Map<String, Map<DateTime, int>> _cacheMap = {};
   static final Map<String, Set<int>> _yearsCachedMap = {};
   bool _isLoading = true;
@@ -29,7 +29,7 @@ class _DueHeatMapState extends State<DueHeatMap>
   OverlayEntry? _tooltipEntry;
   Timer? _tooltipTimer;
 
-  String get _yearsCacheKey => '${widget.deskId ?? 'all'}';
+  String get _yearsCacheKey => '${widget.deckId ?? 'all'}';
   Map<DateTime, int> get _cache => _cacheMap[_yearsCacheKey] ?? {};
   Set<int> get _yearsCached => _yearsCachedMap[_yearsCacheKey] ?? {};
 
@@ -38,7 +38,7 @@ class _DueHeatMapState extends State<DueHeatMap>
     super.initState();
     _viewStart = widget.start;
     _viewEnd = widget.end;
-    // Initialize cache for this desk if not exists
+    // Initialize cache for this deck if not exists
     if (!_cacheMap.containsKey(_yearsCacheKey)) {
       _cacheMap[_yearsCacheKey] = {};
       _yearsCachedMap[_yearsCacheKey] = {};
@@ -49,6 +49,23 @@ class _DueHeatMapState extends State<DueHeatMap>
     } else {
       _primeCache();
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant DueHeatMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Always ensure latest data by invalidating cache for this deck and reloading
+    if (widget.deckId != oldWidget.deckId ||
+        widget.start != oldWidget.start ||
+        widget.end != oldWidget.end) {
+      _viewStart = widget.start;
+      _viewEnd = widget.end;
+    }
+    _invalidateCacheForKey(_yearsCacheKey);
+    setState(() {
+      _isLoading = true;
+    });
+    _primeCache();
   }
 
   @override
@@ -82,19 +99,25 @@ class _DueHeatMapState extends State<DueHeatMap>
     final DateTime yEnd = DateTime(year, 12, 31);
     final vocabService = VocabularyService();
     final Map<DateTime, int> data = await vocabService.getDueCountsByDateRange(
-        start: yStart, end: yEnd, deskId: widget.deskId);
-    // Merge into cache for this desk
+        start: yStart, end: yEnd, deskId: widget.deckId);
+    // Merge into cache for this deck
     if (!_cacheMap.containsKey(_yearsCacheKey)) {
       _cacheMap[_yearsCacheKey] = {};
       _yearsCachedMap[_yearsCacheKey] = {};
     }
-    final deskCache = _cacheMap[_yearsCacheKey]!;
+    final deckCache = _cacheMap[_yearsCacheKey]!;
     data.forEach((date, count) {
       final DateTime key = DateTime(date.year, date.month, date.day);
-      deskCache[key] = count;
+      deckCache[key] = count;
     });
     _yearsCachedMap[_yearsCacheKey]!.add(year);
     if (mounted) setState(() {});
+  }
+
+  // Invalidate cache for a specific key (deck/all) so the next load fetches fresh data
+  void _invalidateCacheForKey(String key) {
+    _cacheMap.remove(key);
+    _yearsCachedMap.remove(key);
   }
 
   // Deprecated fetch call replaced by cached loading

@@ -114,7 +114,7 @@ class ProfileScreen extends StatelessWidget {
                 'Hành động này sẽ:',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              Text('• Xóa tất cả desk và từ vựng'),
+              Text('• Xóa tất cả deck và từ vựng'),
               Text('• Xóa lịch sử học tập'),
               Text('• Không thể hoàn tác'),
               SizedBox(height: 8),
@@ -205,17 +205,17 @@ class ProfileScreen extends StatelessWidget {
       );
 
       // Import các service cần thiết
-      final deskService = DeckService();
+      final deckService = DeckService();
       final vocabularyService = VocabularyService();
 
-      // Tạo desk mẫu
-      final desk = Deck(
+      // Tạo deck mẫu
+      final deck = Deck(
         name: 'Sample Vocabulary',
         color: '#000000',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      final deskId = await deskService.createDesk(desk);
+      final deskId = await deckService.createDeck(deck);
 
       if (deskId > 0) {
         // Tạo 20 từ mẫu, đa dạng cardType và field schema hiện tại
@@ -484,16 +484,16 @@ class ProfileScreen extends StatelessWidget {
       );
 
       // Test tạo vocabulary với hintText và cardType
-      final deskService = DeckService();
+      final deckService = DeckService();
 
-      // Tạo desk test
+      // Tạo deck test
       final testDesk = Deck(
         name: 'Test Migration',
         color: '#000000',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      final deskId = await deskService.createDesk(testDesk);
+      final deskId = await deckService.createDeck(testDesk);
 
       if (deskId > 0) {
         // Test tạo vocabulary với hintText

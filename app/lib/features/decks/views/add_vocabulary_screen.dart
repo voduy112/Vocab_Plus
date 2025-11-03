@@ -17,12 +17,12 @@ import '../widgets/app_bar_actions.dart';
 import '../widgets/preview_dialog.dart';
 
 class AddVocabularyScreen extends StatefulWidget {
-  final Deck desk;
+  final Deck deck;
   final Vocabulary? vocabulary;
 
   const AddVocabularyScreen({
     super.key,
-    required this.desk,
+    required this.deck,
     this.vocabulary,
   });
 
@@ -152,7 +152,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
       appBar: AppBar(
         title: Text(_isEditing ? 'Chỉnh sửa từ vựng' : 'Thêm từ vựng mới'),
         backgroundColor:
-            Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF'))),
+            Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF'))),
         foregroundColor: Colors.white,
         actions: [
           AppBarActions(
@@ -171,8 +171,8 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Thông tin desk
-              DeskInfoHeader(desk: widget.desk),
+              // Thông tin deck
+              DeskInfoHeader(desk: widget.deck),
 
               const SizedBox(height: 24),
 
@@ -237,7 +237,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
 
       final vocabulary = Vocabulary(
         id: _isEditing ? widget.vocabulary!.id : null,
-        deskId: widget.desk.id!,
+        deskId: widget.deck.id!,
         front: _frontController.text.trim(),
         back: _backController.text.trim(),
         masteryLevel: _isEditing ? widget.vocabulary!.masteryLevel : 0,
@@ -280,7 +280,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
 
           final reversedVocabulary = Vocabulary(
             id: null,
-            deskId: widget.desk.id!,
+            deskId: widget.deck.id!,
             front: _backController.text.trim(),
             back: _frontController.text.trim(),
             masteryLevel: 0,
@@ -350,7 +350,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
     final now = DateTime.now();
     final tempVocab = Vocabulary(
       id: null,
-      deskId: widget.desk.id!,
+      deskId: widget.deck.id!,
       front: _frontController.text.trim(),
       back: _backController.text.trim(),
       imageUrl: _frontImageUrl,
@@ -365,7 +365,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
     );
 
     final accent =
-        Color(int.parse(widget.desk.color.replaceFirst('#', '0xFF')));
+        Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF')));
     showVocabularyPreviewDialog(
       context: context,
       vocabulary: tempVocab,

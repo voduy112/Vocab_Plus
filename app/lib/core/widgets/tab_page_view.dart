@@ -49,7 +49,7 @@ class _TabPageViewState extends State<TabPageView> {
       onPageChanged: widget.onPageChanged,
       children: const [
         HomeScreen(),
-        DesksScreen(),
+        DecksScreen(),
         SearchScreen(),
         ProfileScreen(),
       ],
