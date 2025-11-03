@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'core/auth/auth_controller.dart';
 import 'router/app_router.dart';
 import 'data/dictionary/dictionary_repository.dart';
+import 'features/desks/repositories/vocabulary_repository.dart';
+import 'features/desks/repositories/deck_repository.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -12,6 +14,8 @@ class App extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<DictionaryRepository>(create: (_) => DictionaryRepository()),
+        Provider<VocabularyRepository>(create: (_) => VocabularyRepository()),
+        Provider<DeckRepository>(create: (_) => DeckRepository()),
         ChangeNotifierProvider(create: (_) => AuthController()..listenAuth()),
       ],
       child: Builder(
