@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../core/models/deck.dart';
-import '../services/deck_service.dart';
-import '../services/vocabulary_service.dart';
+import '../repositories/deck_repository.dart';
+import '../repositories/vocabulary_repository.dart';
 import '../../study_session/views/study_session_screen.dart';
 import '../../home/widgets/due_heat_map.dart';
 
 class DeckOverviewScreen extends StatefulWidget {
   final Deck deck;
+  final Map<String, dynamic>? initialStats;
+  final int? initialNewCount;
+  final int? initialMinuteLearningCount;
 
   const DeckOverviewScreen({
     super.key,
     required this.deck,
+    this.initialStats,
+    this.initialNewCount,
+    this.initialMinuteLearningCount,
   });
 
   @override
@@ -19,9 +26,6 @@ class DeckOverviewScreen extends StatefulWidget {
 }
 
 class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
-  final DeckService _deckService = DeckService();
-  final VocabularyService _vocabularyService = VocabularyService();
-
   Map<String, dynamic>? _deckStats;
   int _minuteLearningCount = 0;
   int _newCount = 0;
@@ -37,16 +41,28 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   @override
   void initState() {
     super.initState();
+    // Seed with initial values if provided, to avoid empty UI on entry
+    if (widget.initialStats != null) {
+      _deckStats = Map<String, dynamic>.from(widget.initialStats!);
+    }
+    if (widget.initialNewCount != null) {
+      _newCount = widget.initialNewCount!;
+    }
+    if (widget.initialMinuteLearningCount != null) {
+      _minuteLearningCount = widget.initialMinuteLearningCount!;
+    }
     _loadData();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final stats = await _deckService.getDeckStats(widget.deck.id!);
+      final deckRepo = context.read<DeckRepository>();
+      final vocabRepo = context.read<VocabularyRepository>();
+      final stats = await deckRepo.getDeckStats(widget.deck.id!);
       final minuteLearning =
-          await _vocabularyService.countMinuteLearningByDeck(widget.deck.id!);
-      final newCount = await _vocabularyService.countNewByDeck(widget.deck.id!);
+          await vocabRepo.countMinuteLearning(widget.deck.id!);
+      final newCount = await vocabRepo.countNewVocabularies(widget.deck.id!);
 
       final learningMetrics = await _calculateLearningMetrics();
 
