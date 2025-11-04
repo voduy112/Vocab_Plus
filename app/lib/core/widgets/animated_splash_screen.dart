@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:provider/provider.dart';
+import '../../data/dictionary/dictionary_repository.dart';
+import '../../features/decks/services/deck_preload_cache.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
   const AnimatedSplashScreen({
@@ -45,8 +48,21 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     // Start fade animation
     _fadeController.forward();
 
-    // Wait for Lottie animation to complete (adjust timing as needed)
-    await Future.delayed(const Duration(milliseconds: 4000));
+    // Load dictionary data and decks data in parallel
+    try {
+      final deckPreloadCache = DeckPreloadCache();
+      final dictionaryRepository = context.read<DictionaryRepository>();
+
+      // Load dictionary and decks in parallel
+      await Future.wait([
+        // Load dictionary - this will parse in isolate so it won't block UI
+        dictionaryRepository.loadAll(),
+        // Preload decks data
+        deckPreloadCache.preloadDecks(),
+      ]);
+    } catch (e) {
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
 
     // Navigate to main app
     if (mounted) {
