@@ -344,9 +344,6 @@ class _DueHeatMapState extends State<DueHeatMap>
           ),
           const SizedBox(height: 12),
           Builder(builder: (context) {
-            if (_isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
             final data = _cache;
             final DateTime today = DateTime.now();
 
