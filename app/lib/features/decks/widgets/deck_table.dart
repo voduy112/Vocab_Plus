@@ -140,12 +140,7 @@ class DeckTable extends StatelessWidget {
             ),
           ),
           // Rows
-          if (isLoading)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(),
-            )
-          else if (desks.isEmpty)
+          if (desks.isEmpty)
             Padding(
               padding: const EdgeInsets.all(32),
               child: Column(
