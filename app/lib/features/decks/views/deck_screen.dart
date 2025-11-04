@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/deck.dart';
 import '../services/deck_service.dart';
+import '../services/deck_preload_cache.dart';
 // import 'deck_detail_screen.dart';
 import 'deck_overview_screen.dart';
 import '../widgets/create_deck_dialog.dart';
@@ -49,6 +50,25 @@ class _DecksScreenState extends State<DecksScreen>
   Future<void> _loadDecks({bool forceReload = false}) async {
     if (_hasLoadedData && !forceReload) {
       return;
+    }
+
+    // Kiểm tra cache từ splash screen
+    final deckPreloadCache = DeckPreloadCache();
+    if (!forceReload && deckPreloadCache.hasData) {
+      final cachedDecks = deckPreloadCache.getCachedDecks();
+      final cachedStats = deckPreloadCache.getCachedStats();
+
+      if (cachedDecks != null && cachedStats != null) {
+        setState(() {
+          _decks = cachedDecks;
+          _filteredDecks = cachedDecks;
+          _deckStats = cachedStats;
+          _isLoading = false;
+          _hasLoadedData = true;
+        });
+        _sortDecks();
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -156,6 +176,8 @@ class _DecksScreenState extends State<DecksScreen>
       builder: (context) => const CreateDeckDialog(),
     );
     if (result != null) {
+      // Clear cache khi có deck mới
+      DeckPreloadCache().clearCache();
       await _loadDecks(forceReload: true);
     }
   }
@@ -333,10 +355,21 @@ class _DecksScreenState extends State<DecksScreen>
     );
   }
 
-  void _navigateToDeckDetail(Deck desk) {
+  void _navigateToDeckDetail(Deck deck) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => DeckOverviewScreen(deck: desk),
+        builder: (context) {
+          final stats = (deck.id != null) ? _deckStats[deck.id!] : null;
+          final int? initialNewCount = (stats != null)
+              ? ((stats['total'] as int? ?? 0) -
+                  (stats['learned'] as int? ?? 0))
+              : null;
+          return DeckOverviewScreen(
+            deck: deck,
+            initialStats: stats,
+            initialNewCount: initialNewCount,
+          );
+        },
       ),
     );
   }
@@ -391,6 +424,8 @@ class _DecksScreenState extends State<DecksScreen>
     if (confirmed == true) {
       try {
         await _deckService.deleteDeck(deck.id!);
+        // Clear cache khi xóa deck
+        DeckPreloadCache().clearCache();
         await _loadDecks(forceReload: true);
 
         if (mounted) {
