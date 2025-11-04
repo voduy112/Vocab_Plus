@@ -1,14 +1,29 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/foundation.dart';
 import 'models.dart';
 import 'package:dio/dio.dart';
+
+// Top-level function to parse dictionary in isolate (required for compute)
+List<WordEntry> _parseDictionaryInIsolate(String data) {
+  final lines = const LineSplitter().convert(data);
+  final List<WordEntry> entries = [];
+  for (final line in lines) {
+    final entry = WordEntry.tryParseLine(line);
+    if (entry != null) entries.add(entry);
+  }
+  return entries;
+}
 
 class DictionaryRepository {
   final String jsonlAssetPath;
   final String imagesBasePath; // e.g. assets/dictionary/images_small/
   // Static cache shared across all repository instances to avoid reloading large asset
   static List<WordEntry>? _cache;
+  static Map<String, List<WordEntry>>? _prefixIndex;
+  static bool _isLoading = false;
+  static Completer<List<WordEntry>>? _loadingCompleter;
 
   DictionaryRepository({
     this.jsonlAssetPath = 'lib/core/assets/dictionary/simple_with_vi.jsonl',
@@ -17,22 +32,105 @@ class DictionaryRepository {
 
   Future<List<WordEntry>> loadAll() async {
     if (_cache != null) return _cache!;
-    final data = await rootBundle.loadString(jsonlAssetPath);
-    final lines = const LineSplitter().convert(data);
-    final List<WordEntry> entries = [];
-    for (final line in lines) {
-      final entry = WordEntry.tryParseLine(line);
-      if (entry != null) entries.add(entry);
+
+    // If already loading, wait for the existing load
+    if (_isLoading && _loadingCompleter != null) {
+      return _loadingCompleter!.future;
     }
-    _cache = entries;
-    return entries;
+
+    _isLoading = true;
+    _loadingCompleter = Completer<List<WordEntry>>();
+
+    try {
+      // Load asset string
+      final data = await rootBundle.loadString(jsonlAssetPath);
+
+      // Parse in isolate to avoid blocking main thread
+      final entries = await compute(_parseDictionaryInIsolate, data);
+
+      _cache = entries;
+      _buildIndex(entries);
+      _isLoading = false;
+      _loadingCompleter!.complete(entries);
+      return entries;
+    } catch (e) {
+      _isLoading = false;
+      if (!_loadingCompleter!.isCompleted) {
+        _loadingCompleter!.completeError(e);
+      }
+      rethrow;
+    }
+  }
+
+  // Build prefix index for faster search
+  void _buildIndex(List<WordEntry> entries) {
+    if (_prefixIndex != null) return;
+
+    _prefixIndex = <String, List<WordEntry>>{};
+
+    // Index by word prefixes (first 3 characters for fast lookup)
+    for (final entry in entries) {
+      final wordLower = entry.word.toLowerCase();
+      if (wordLower.length >= 3) {
+        final prefix = wordLower.substring(0, 3);
+        _prefixIndex!.putIfAbsent(prefix, () => []).add(entry);
+      }
+
+      // Also index by wordVi if available
+      if (entry.wordVi != null) {
+        final viLower = entry.wordVi!.toLowerCase();
+        if (viLower.length >= 2) {
+          final prefix = viLower.substring(0, 2);
+          _prefixIndex!.putIfAbsent(prefix, () => []).add(entry);
+        }
+      }
+    }
   }
 
   Future<List<WordEntry>> search(String query, {int limit = 20}) async {
     final lower = query.trim().toLowerCase();
     if (lower.isEmpty) return [];
+
     final entries = await loadAll();
-    // Deduplicate by word (case-insensitive), keep first match to preserve order
+
+    // Use index for faster prefix matching
+    if (lower.length >= 3 && _prefixIndex != null) {
+      final prefix = lower.substring(0, 3);
+      final candidates = _prefixIndex![prefix];
+
+      if (candidates != null && candidates.isNotEmpty) {
+        final Map<String, WordEntry> uniqueByWord = <String, WordEntry>{};
+
+        // Search in indexed candidates first
+        for (final entry in candidates) {
+          final wordKey = entry.word.toLowerCase();
+          if (entry.word.toLowerCase().startsWith(lower) ||
+              (entry.wordVi ?? '').toLowerCase().contains(lower)) {
+            uniqueByWord.putIfAbsent(wordKey, () => entry);
+            if (uniqueByWord.length >= limit) {
+              return uniqueByWord.values.toList(growable: false);
+            }
+          }
+        }
+
+        // If not enough results, fall back to full search
+        if (uniqueByWord.length < limit) {
+          for (final entry in entries) {
+            final wordKey = entry.word.toLowerCase();
+            if (!uniqueByWord.containsKey(wordKey) &&
+                (entry.word.toLowerCase().startsWith(lower) ||
+                    (entry.wordVi ?? '').toLowerCase().contains(lower))) {
+              uniqueByWord.putIfAbsent(wordKey, () => entry);
+              if (uniqueByWord.length >= limit) break;
+            }
+          }
+        }
+
+        return uniqueByWord.values.toList(growable: false);
+      }
+    }
+
+    // Fallback to original search if index not available or query too short
     final Map<String, WordEntry> uniqueByWord = <String, WordEntry>{};
     for (final entry in entries) {
       final wordKey = entry.word.toLowerCase();
