@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/dictionary/dictionary_repository.dart';
 import '../../features/decks/services/deck_preload_cache.dart';
 
@@ -42,31 +42,43 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   }
 
   void _startAnimation() async {
+    // Wait for the first frame to ensure context is ready
+    await WidgetsBinding.instance.endOfFrame;
+
     // Hide native splash screen
     FlutterNativeSplash.remove();
 
     // Start fade animation
     _fadeController.forward();
 
+    // Minimum display time for splash screen (2 seconds)
+    final minimumDisplayTime =
+        Future.delayed(const Duration(milliseconds: 2000));
+
     // Load dictionary data and decks data in parallel
     try {
       final deckPreloadCache = DeckPreloadCache();
-      final dictionaryRepository = context.read<DictionaryRepository>();
+      // Create instance directly instead of using Provider
+      // since this widget is outside the Provider tree
+      final dictionaryRepository = DictionaryRepository();
 
-      // Load dictionary and decks in parallel
+      // Load dictionary and decks in parallel, ensuring minimum display time
       await Future.wait([
         // Load dictionary - this will parse in isolate so it won't block UI
         dictionaryRepository.loadAll(),
         // Preload decks data
         deckPreloadCache.preloadDecks(),
+        // Ensure minimum display time
+        minimumDisplayTime,
       ]);
     } catch (e) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      // If loading fails, still wait for minimum display time
+      await minimumDisplayTime;
     }
 
-    // Navigate to main app
+    // Navigate to main app using GoRouter
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/tabs/main');
+      context.go('/tabs/main');
     }
   }
 
