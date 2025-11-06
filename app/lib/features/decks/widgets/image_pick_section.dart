@@ -67,13 +67,11 @@ class ImagePickSection extends StatelessWidget {
           initialImageUrl: pickForFront ? frontImageUrl : backImageUrl,
           initialImagePath: pickForFront ? frontImagePath : backImagePath,
           suggestQuery: pickForFront ? frontText : backText,
-          onChanged: (value) {
-            onChanged(pickForFront, value.$1, value.$2);
+          onChanged: (imageUrl, imagePath) {
+            onChanged(pickForFront, imageUrl, imagePath);
           },
         ),
       ],
     );
   }
 }
-
-
