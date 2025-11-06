@@ -10,7 +10,7 @@ class VocabularyImagePicker extends StatefulWidget {
   final String? initialImageUrl;
   final String? initialImagePath;
   final String? suggestQuery;
-  final ValueChanged<(String? imageUrl, String? imagePath)> onChanged;
+  final void Function(String? imageUrl, String? imagePath) onChanged;
 
   const VocabularyImagePicker({
     super.key,
@@ -102,7 +102,7 @@ class _VocabularyImagePickerState extends State<VocabularyImagePicker> {
       _imagePath = file.path;
       _imageUrl = null;
     });
-    widget.onChanged((_imageUrl, _imagePath));
+    widget.onChanged(_imageUrl, _imagePath);
   }
 
   Future<void> _openPixabaySearch() async {
@@ -117,7 +117,7 @@ class _VocabularyImagePickerState extends State<VocabularyImagePicker> {
         _imageUrl = result['url'];
         _imagePath = result['path'];
       });
-      widget.onChanged((_imageUrl, _imagePath));
+      widget.onChanged(_imageUrl, _imagePath);
     }
   }
 }
