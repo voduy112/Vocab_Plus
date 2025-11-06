@@ -121,8 +121,12 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     final v = _queue[_index];
     try {
       // Luôn lật về mặt trước trước khi xử lý lựa chọn, đặc biệt khi là thẻ cuối
+      print('isShowingResult: $_isShowingResult');
+      print('choice: $choice');
+      print('v: $v');
       if (_isShowingResult) {
         setState(() => _isShowingResult = false);
+        print('isShowingResult: $_isShowingResult');
       }
       final bool wasNew = (v.srsRepetitions == 0);
       final result = await _studyService.reviewWithChoice(
@@ -185,7 +189,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF')));
+    final color = Theme.of(context).colorScheme.primary;
     return WillPopScope(
         onWillPop: () async {
           Navigator.of(context).pop(true);
@@ -260,6 +264,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           onChoiceSelected: _choose,
           onAnswerShown: (isShowing) => _setIsShowingResultSafely(isShowing),
           accentColor: color,
+          isParentShowingResult: _isShowingResult,
         );
       case CardType.reverse:
         return ReverseCardSession(
@@ -268,6 +273,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           onChoiceSelected: _choose,
           onAnswerShown: (isShowing) => _setIsShowingResultSafely(isShowing),
           accentColor: color,
+          isParentShowingResult: _isShowingResult,
         );
       case CardType.typing:
         return TypingCardSession(
@@ -276,6 +282,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
           onChoiceSelected: _choose,
           onAnswerShown: (isShowing) => _setIsShowingResultSafely(isShowing),
           accentColor: color,
+          isParentShowingResult: _isShowingResult,
         );
     }
   }

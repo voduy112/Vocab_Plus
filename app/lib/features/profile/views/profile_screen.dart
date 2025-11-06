@@ -211,7 +211,6 @@ class ProfileScreen extends StatelessWidget {
       // Tạo deck mẫu
       final deck = Deck(
         name: 'Sample Vocabulary',
-        color: '#000000',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -489,7 +488,6 @@ class ProfileScreen extends StatelessWidget {
       // Tạo deck test
       final testDesk = Deck(
         name: 'Test Migration',
-        color: '#000000',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
