@@ -51,9 +51,7 @@ class FeatureGrid extends StatelessWidget {
             end: Alignment.centerRight,
           ),
           onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Đánh giá phát âm')),
-            );
+            context.go('/pronunciation/select-deck');
           },
         ),
       ],
@@ -115,8 +113,8 @@ class _FeatureCardState extends State<_FeatureCard>
           child: Material(
             elevation: _isPressed ? 2 : 8,
             borderRadius: BorderRadius.circular(16),
-      color: Colors.transparent,
-      child: InkWell(
+            color: Colors.transparent,
+            child: InkWell(
               onTap: widget.onTap,
               onTapDown: (_) {
                 setState(() => _isPressed = true);
@@ -131,13 +129,13 @@ class _FeatureCardState extends State<_FeatureCard>
                 _controller.reverse();
               },
               borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 120,
-          decoration: BoxDecoration(
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
                   color: widget.bgColor,
                   borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
+                  boxShadow: [
+                    BoxShadow(
                       color: Colors.black.withOpacity(0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
@@ -146,33 +144,33 @@ class _FeatureCardState extends State<_FeatureCard>
                     BoxShadow(
                       color: Colors.black.withOpacity(0.04),
                       blurRadius: 6,
-                offset: const Offset(0, 2),
+                      offset: const Offset(0, 2),
                       spreadRadius: -2,
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
                       widget.icon,
-                size: 32,
+                      size: 32,
                       color: widget.iconColor,
-              ),
-              const Spacer(),
-              Text(
+                    ),
+                    const Spacer(),
+                    Text(
                       widget.label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
           ),
         );
       },
@@ -232,8 +230,8 @@ class _FeatureCardLargeState extends State<_FeatureCardLarge>
           child: Material(
             elevation: _isPressed ? 4 : 12,
             borderRadius: BorderRadius.circular(16),
-      color: Colors.transparent,
-      child: InkWell(
+            color: Colors.transparent,
+            child: InkWell(
               onTap: widget.onTap,
               onTapDown: (_) {
                 setState(() => _isPressed = true);
@@ -248,13 +246,13 @@ class _FeatureCardLargeState extends State<_FeatureCardLarge>
                 _controller.reverse();
               },
               borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 150,
-          decoration: BoxDecoration(
+              child: Container(
+                height: 150,
+                decoration: BoxDecoration(
                   gradient: widget.gradient,
                   borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
+                  boxShadow: [
+                    BoxShadow(
                       color: Colors.black.withOpacity(0.15),
                       blurRadius: 24,
                       offset: const Offset(0, 12),
@@ -263,72 +261,72 @@ class _FeatureCardLargeState extends State<_FeatureCardLarge>
                     BoxShadow(
                       color: Colors.black.withOpacity(0.08),
                       blurRadius: 8,
-                offset: const Offset(0, 4),
+                      offset: const Offset(0, 4),
                       spreadRadius: -4,
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              // Phần text và button bên trái
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                            widget.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
                     ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                            onPressed: widget.onTap,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.blue.shade700,
-                              elevation: 4,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
-                      child: Row(
+                  ],
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    // Phần text và button bên trái
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                                  widget.buttonLabel,
+                            widget.title,
                             style: const TextStyle(
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.mic, size: 18),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: widget.onTap,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.blue.shade700,
+                              elevation: 4,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.buttonLabel,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.mic, size: 18),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Icon microphone bên phải
+                    Icon(
+                      Icons.mic_outlined,
+                      size: 64,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              // Icon microphone bên phải
-              Icon(
-                Icons.mic_outlined,
-                size: 64,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
           ),
         );
       },
