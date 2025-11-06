@@ -9,6 +9,7 @@ class BasisCardSession extends StatefulWidget {
   final Function(SrsChoice) onChoiceSelected;
   final Function(bool)? onAnswerShown;
   final Color? accentColor;
+  final bool isParentShowingResult;
 
   const BasisCardSession({
     super.key,
@@ -17,6 +18,7 @@ class BasisCardSession extends StatefulWidget {
     required this.onChoiceSelected,
     this.onAnswerShown,
     this.accentColor,
+    this.isParentShowingResult = false,
   });
 
   @override
@@ -132,12 +134,28 @@ class _BasisCardSessionState extends State<BasisCardSession>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.vocabulary.id != widget.vocabulary.id) {
       _resetToQuestion();
+    } else if (oldWidget.isParentShowingResult && !widget.isParentShowingResult) {
+      // Parent đã reset về false, cần lật ngược lại với animation
+      _flipBackToQuestion();
     }
   }
 
   void _resetToQuestion() {
     _animationController.reset();
     setState(() => _isShowingAnswer = false);
+  }
+
+  void _flipBackToQuestion() {
+    if (_isShowingAnswer && _animationController.isCompleted) {
+      setState(() => _isShowingAnswer = false);
+      _animationController.reverse();
+      widget.onAnswerShown?.call(false);
+    } else if (_isShowingAnswer) {
+      // Đang trong quá trình animation, vẫn reverse
+      setState(() => _isShowingAnswer = false);
+      _animationController.reverse();
+      widget.onAnswerShown?.call(false);
+    }
   }
 
   void _showAnswer() {
@@ -314,10 +332,6 @@ class _BasisCardSessionState extends State<BasisCardSession>
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
             child: Text(
               widget.vocabulary.back,
               style: const TextStyle(
