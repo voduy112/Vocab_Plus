@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
+import 'create_deck_dialog.dart';
 import '../../../core/models/deck.dart';
 import 'deck_row.dart';
 
@@ -18,6 +20,7 @@ class DeckTable extends StatelessWidget {
   final VoidCallback onNameSortToggle;
   final Function(Deck) onDeckTap;
   final Function(Deck) onDeckLongPress;
+  final VoidCallback? onCreateDeck;
 
   const DeckTable({
     super.key,
@@ -29,6 +32,7 @@ class DeckTable extends StatelessWidget {
     required this.onNameSortToggle,
     required this.onDeckTap,
     required this.onDeckLongPress,
+    this.onCreateDeck,
   });
 
   @override
@@ -142,10 +146,18 @@ class DeckTable extends StatelessWidget {
           // Rows
           if (desks.isEmpty)
             Padding(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.symmetric(vertical: 40),
               child: Column(
                 children: [
-                  Icon(Icons.folder_open, size: 48, color: Colors.grey[400]),
+                  SizedBox(
+                    width: 150,
+                    height: 150,
+                    child: Lottie.asset(
+                      'lib/core/assets/splash/Card preloader.json',
+                      fit: BoxFit.contain,
+                      repeat: true,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     searchQuery.isEmpty
@@ -155,6 +167,26 @@ class DeckTable extends StatelessWidget {
                       color: Colors.grey[600],
                       fontSize: 16,
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () {
+                      if (onCreateDeck != null) {
+                        onCreateDeck!();
+                        return;
+                      }
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const CreateDeckDialog(),
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.blue[600],
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Tạo deck'),
                   ),
                 ],
               ),
