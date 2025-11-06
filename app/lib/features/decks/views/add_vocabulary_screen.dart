@@ -151,9 +151,6 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Chỉnh sửa từ vựng' : 'Thêm từ vựng mới'),
-        backgroundColor:
-            Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF'))),
-        foregroundColor: Colors.white,
         actions: [
           AppBarActions(
             isLoading: _isLoading,
@@ -364,8 +361,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
       cardType: _selectedCardType,
     );
 
-    final accent =
-        Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF')));
+    final accent = Theme.of(context).colorScheme.primary;
     showVocabularyPreviewDialog(
       context: context,
       vocabulary: tempVocab,

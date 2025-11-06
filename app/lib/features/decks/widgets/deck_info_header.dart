@@ -11,13 +11,10 @@ class DeskInfoHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(int.parse(desk.color.replaceFirst('#', '0xFF')))
-            .withOpacity(0.1),
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color:
-              Color(int.parse(desk.color.replaceFirst('#', '0xFF')))
-                  .withOpacity(0.3),
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -26,7 +23,7 @@ class DeskInfoHeader extends StatelessWidget {
             width: 12,
             height: 12,
             decoration: BoxDecoration(
-              color: Color(int.parse(desk.color.replaceFirst('#', '0xFF'))),
+              color: Theme.of(context).colorScheme.primary,
               shape: BoxShape.circle,
             ),
           ),
@@ -57,5 +54,3 @@ class DeskInfoHeader extends StatelessWidget {
     );
   }
 }
-
-

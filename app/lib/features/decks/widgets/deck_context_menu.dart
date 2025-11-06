@@ -29,8 +29,7 @@ class DeckContextMenu extends StatelessWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color:
-                        Color(int.parse(deck.color.replaceFirst('#', '0xFF'))),
+                    color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -51,6 +50,7 @@ class DeckContextMenu extends StatelessWidget {
           ListView(
             shrinkWrap: true,
             children: [
+              const SizedBox(height: 10),
               ListTile(
                 leading: Icon(
                   Icons.list,

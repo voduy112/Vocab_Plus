@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../../../core/widgets/context_menu_scaffold.dart';
 import '../../../core/widgets/custom_form_field.dart';
 import '../../../core/models/deck.dart';
@@ -16,7 +15,6 @@ class CreateDeckDialog extends StatefulWidget {
 class _CreateDeckDialogState extends State<CreateDeckDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  String _selectedColor = '#2196F3';
 
   bool get _isValid {
     final String name = _nameController.text.trim();
@@ -28,95 +26,6 @@ class _CreateDeckDialogState extends State<CreateDeckDialog> {
   void dispose() {
     _nameController.dispose();
     super.dispose();
-  }
-
-  void _openColorPicker() async {
-    Color current = Color(int.parse(_selectedColor.replaceFirst('#', '0xFF')));
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.palette, color: Colors.blue[600]),
-              const SizedBox(width: 8),
-              const Text('Chọn màu sắc'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BlockPicker(
-                  pickerColor: current,
-                  onColorChanged: (color) {
-                    current = color;
-                  },
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: current,
-                          shape: BoxShape.circle,
-                          border:
-                              Border.all(color: Colors.grey[300]!, width: 1),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '#${current.red.toRadixString(16).padLeft(2, '0')}'
-                                '${current.green.toRadixString(16).padLeft(2, '0')}'
-                                '${current.blue.toRadixString(16).padLeft(2, '0')}'
-                            .toUpperCase(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Hủy'),
-            ),
-            FilledButton.icon(
-              onPressed: () {
-                setState(() {
-                  _selectedColor = '#'
-                          '${current.red.toRadixString(16).padLeft(2, '0')}'
-                          '${current.green.toRadixString(16).padLeft(2, '0')}'
-                          '${current.blue.toRadixString(16).padLeft(2, '0')}'
-                      .toUpperCase();
-                });
-                Navigator.of(context).pop();
-              },
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('Chọn màu'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.blue[600],
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -148,24 +57,6 @@ class _CreateDeckDialogState extends State<CreateDeckDialog> {
                         controller: _nameController,
                         label: 'Deck',
                         hintText: 'Deck',
-                        suffixIcon: InkWell(
-                          onTap: _openColorPicker,
-                          customBorder: const CircleBorder(),
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 10),
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: Color(int.parse(
-                                    _selectedColor.replaceFirst('#', '0xFF'))),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                            ),
-                          ),
-                        ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Vui lòng nhập tên deck';
@@ -201,7 +92,6 @@ class _CreateDeckDialogState extends State<CreateDeckDialog> {
                                 final now = DateTime.now();
                                 final desk = Deck(
                                   name: _nameController.text.trim(),
-                                  color: _selectedColor,
                                   createdAt: now,
                                   updatedAt: now,
                                 );
@@ -225,5 +115,3 @@ class _CreateDeckDialogState extends State<CreateDeckDialog> {
     );
   }
 }
-
-

@@ -153,8 +153,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.deck.name),
-        backgroundColor:
-            Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF'))),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -294,8 +293,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addNewVocabulary,
-        backgroundColor:
-            Color(int.parse(widget.deck.color.replaceFirst('#', '0xFF'))),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

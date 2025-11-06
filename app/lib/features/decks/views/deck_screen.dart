@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/models/deck.dart';
 import '../services/deck_service.dart';
 import '../services/deck_preload_cache.dart';
-// import 'deck_detail_screen.dart';
 import 'deck_overview_screen.dart';
 import '../widgets/create_deck_dialog.dart';
 import '../widgets/featured_card.dart';
@@ -184,6 +183,7 @@ class _DecksScreenState extends State<DecksScreen>
 
   Widget _buildHeader() {
     return Container(
+      key: const ValueKey('header'),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         children: [
@@ -196,20 +196,21 @@ class _DecksScreenState extends State<DecksScreen>
               ),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[600],
-                      borderRadius: BorderRadius.circular(8),
+                  if (_filteredDecks.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[600],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: InkWell(
+                        onTap: _createNewDeck,
+                        borderRadius: BorderRadius.circular(8),
+                        child: const Icon(Icons.add,
+                            size: 20, color: Colors.white),
+                      ),
                     ),
-                    child: InkWell(
-                      onTap: _createNewDeck,
-                      borderRadius: BorderRadius.circular(8),
-                      child:
-                          const Icon(Icons.add, size: 20, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  if (_filteredDecks.isNotEmpty) const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -234,56 +235,90 @@ class _DecksScreenState extends State<DecksScreen>
               ),
             ],
           ),
-          if (_isSearchVisible) ...[
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              height: 48,
-              child: TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintStyle: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 14,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchOnlyView() {
+    return Container(
+      key: const ValueKey('search'),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: Colors.grey[600],
-                    size: 20,
+                  child: InkWell(
+                    onTap: _toggleSearch,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Icon(Icons.arrow_back, color: Colors.grey[700]),
+                    ),
                   ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(
-                            Icons.clear,
-                            color: Colors.grey[600],
-                            size: 18,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: Colors.blue[400]!, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    child: TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Search decks...',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Colors.grey[600],
+                          size: 20,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: Colors.grey[600],
+                                  size: 18,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide:
+                              BorderSide(color: Colors.blue[400]!, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -326,6 +361,7 @@ class _DecksScreenState extends State<DecksScreen>
       onNameSortToggle: _toggleNameSort,
       onDeckTap: _navigateToDeckDetail,
       onDeckLongPress: _showDeckContextMenu,
+      onCreateDeck: _filteredDecks.isEmpty ? _createNewDeck : null,
     );
   }
 
@@ -336,7 +372,25 @@ class _DecksScreenState extends State<DecksScreen>
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.0, -1.0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  )),
+                  child: FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  ),
+                );
+              },
+              child: _isSearchVisible ? _buildSearchOnlyView() : _buildHeader(),
+            ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () => _loadDecks(forceReload: true),
