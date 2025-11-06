@@ -9,6 +9,7 @@ class ReverseCardSession extends StatefulWidget {
   final Function(SrsChoice) onChoiceSelected;
   final Function(bool)? onAnswerShown;
   final Color? accentColor;
+  final bool isParentShowingResult;
 
   const ReverseCardSession({
     super.key,
@@ -17,6 +18,7 @@ class ReverseCardSession extends StatefulWidget {
     required this.onChoiceSelected,
     this.onAnswerShown,
     this.accentColor,
+    this.isParentShowingResult = false,
   });
 
   @override
@@ -137,11 +139,26 @@ class _ReverseCardSessionState extends State<ReverseCardSession>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.vocabulary.id != widget.vocabulary.id) {
       _resetToFront();
+    } else if (oldWidget.isParentShowingResult &&
+        !widget.isParentShowingResult) {
+      // Parent đã reset về false, cần lật ngược lại với animation
+      _flipBackToFront();
     }
   }
 
   void _resetToFront() {
     _animationController.reset();
+  }
+
+  void _flipBackToFront() {
+    if (_animationController.isCompleted) {
+      _animationController.reverse();
+      widget.onAnswerShown?.call(false);
+    } else if (_animationController.isAnimating) {
+      // Đang trong quá trình animation, vẫn reverse
+      _animationController.reverse();
+      widget.onAnswerShown?.call(false);
+    }
   }
 
   void _flipCard() {
