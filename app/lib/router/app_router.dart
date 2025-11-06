@@ -14,13 +14,26 @@ import '../../core/widgets/custom_bottom_nav.dart';
 import '../../core/widgets/ai_chat_button.dart';
 import '../../core/models/deck.dart';
 import '../../core/models/vocabulary.dart';
+import '../../features/pronunciation/views/select_deck_screen.dart';
+import '../../core/widgets/animated_splash_screen.dart';
 
 GoRouter createRouter(AuthController auth) {
   return GoRouter(
-    initialLocation:
-        '/tabs/main', // Có thể thay đổi thành '/tabs/decks' hoặc '/tabs/profile'
+    initialLocation: '/splash', // Start with splash screen
     debugLogDiagnostics: true, // Hiển thị log navigation để debug
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Text('Error: ${state.error}'),
+      ),
+    ),
     routes: [
+      // Splash screen route
+      GoRoute(
+        path: '/splash',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: AnimatedSplashScreen(),
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return Scaffold(
@@ -107,6 +120,10 @@ GoRouter createRouter(AuthController auth) {
           final vocabulary = args['vocabulary'] as Vocabulary;
           return AddVocabularyScreen(deck: deck, vocabulary: vocabulary);
         },
+      ),
+      GoRoute(
+        path: '/pronunciation/select-deck',
+        builder: (context, state) => const PronunciationSelectDeckScreen(),
       ),
     ],
     redirect: (context, state) {
