@@ -36,11 +36,19 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // Lớp dưới: Header (có hiệu ứng khi scroll)
             HomeHeader(scrollController: _scrollController),
-            // Lớp trên: Nội dung có thể scroll (chồng lên header)
+            // Lớp giữa: Nội dung có thể scroll (chồng lên header)
             ScrollableContent(
               scrollController: _scrollController,
               start: start,
               end: end,
+            ),
+            // Lớp trên cùng: Notification icon (không bị che phủ)
+            Positioned(
+              top: 20,
+              right: 16,
+              child: AnimatedNotificationIcon(
+                scrollController: _scrollController,
+              ),
             ),
           ],
         ),
