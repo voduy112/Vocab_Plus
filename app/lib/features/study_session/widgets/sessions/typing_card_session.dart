@@ -63,7 +63,8 @@ class _TypingCardSessionState extends State<TypingCardSession>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.vocabulary.id != widget.vocabulary.id) {
       _resetSession();
-    } else if (oldWidget.isParentShowingResult && !widget.isParentShowingResult) {
+    } else if (oldWidget.isParentShowingResult &&
+        !widget.isParentShowingResult) {
       // Parent đã reset về false, cần lật ngược lại với animation
       _flipBackToQuestion();
     }
@@ -118,47 +119,6 @@ class _TypingCardSessionState extends State<TypingCardSession>
     if (!_isShowingResult) {
       _checkAnswer();
     }
-  }
-
-  Widget _buildLiveProgress() {
-    final correctAnswer = widget.vocabulary.back;
-    final typed = _answerController.text.trim();
-    if (typed.isEmpty) return const SizedBox.shrink();
-
-    final lowerTyped = typed.toLowerCase();
-    final lowerCorrect = correctAnswer.toLowerCase();
-
-    int prefixLen = 0;
-    for (int i = 0; i < lowerTyped.length && i < lowerCorrect.length; i++) {
-      if (lowerTyped[i] == lowerCorrect[i]) {
-        prefixLen++;
-      } else {
-        break;
-      }
-    }
-
-    // Only show when user is typing a correct prefix
-    if (prefixLen == 0) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.35),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          correctAnswer.substring(0, prefixLen),
-          style: const TextStyle(
-            fontSize: 28,
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.0,
-          ),
-        ),
-      ),
-    );
   }
 
   bool _hasOtherFields(Map<String, String> extra) {
@@ -452,12 +412,19 @@ class _TypingCardSessionState extends State<TypingCardSession>
               ),
               textAlign: TextAlign.center,
               onSubmitted: (_) => _checkAnswer(),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                setState(() {});
+                // Tự động hiển thị đáp án nếu nhập đúng
+                if (!_isShowingResult) {
+                  final typed = _answerController.text.trim();
+                  if (typed.toLowerCase() ==
+                      widget.vocabulary.back.toLowerCase()) {
+                    _checkAnswer();
+                  }
+                }
+              },
             ),
           ),
-
-          // Live progress preview: green correct prefix + grey placeholders
-          _buildLiveProgress(),
 
           const SizedBox(height: 24),
 
