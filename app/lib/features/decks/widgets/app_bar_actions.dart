@@ -35,7 +35,7 @@ class AppBarActions extends StatelessWidget {
       children: [
         IconButton(
           tooltip: 'Xem trước',
-          icon: const Icon(Icons.visibility_outlined, color: Colors.white),
+          icon: const Icon(Icons.visibility_outlined, color: Colors.black),
           onPressed: onPreview,
         ),
         TextButton(
@@ -43,7 +43,7 @@ class AppBarActions extends StatelessWidget {
           child: Text(
             saveLabel,
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -52,4 +52,3 @@ class AppBarActions extends StatelessWidget {
     );
   }
 }
-
