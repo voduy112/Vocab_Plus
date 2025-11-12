@@ -18,7 +18,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'vocab_plus.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -33,7 +33,8 @@ class DatabaseHelper {
         color TEXT DEFAULT '#2196F3',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        is_active INTEGER DEFAULT 1
+        is_active INTEGER DEFAULT 1,
+        is_favorite INTEGER DEFAULT 0
       )
     ''');
 
@@ -108,10 +109,62 @@ class DatabaseHelper {
     ''');
     await db.execute(
         'CREATE INDEX idx_search_history_created_at ON search_history(created_at DESC)');
+
+    // Tạo bảng notifications
+    await db.execute('''
+      CREATE TABLE notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        time TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        type TEXT,
+        vocabulary_id INTEGER,
+        deck_id INTEGER,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id) ON DELETE CASCADE,
+        FOREIGN KEY (deck_id) REFERENCES decks (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX idx_notifications_time ON notifications(time DESC)');
+    await db.execute(
+        'CREATE INDEX idx_notifications_is_read ON notifications(is_read)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // No upgrades needed - all fields are in CREATE TABLE from the start
+    if (oldVersion < 2) {
+      // Thêm bảng notifications cho version 2
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          time TEXT NOT NULL,
+          is_read INTEGER DEFAULT 0,
+          type TEXT,
+          vocabulary_id INTEGER,
+          deck_id INTEGER,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id) ON DELETE CASCADE,
+          FOREIGN KEY (deck_id) REFERENCES decks (id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(time DESC)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)');
+    }
+    if (oldVersion < 3) {
+      // Thêm cột is_favorite cho version 3
+      try {
+        await db.execute(
+            'ALTER TABLE decks ADD COLUMN is_favorite INTEGER DEFAULT 0');
+      } catch (e) {
+        // Cột có thể đã tồn tại, bỏ qua lỗi
+        print('Column is_favorite might already exist: $e');
+      }
+    }
   }
 
   // Đóng database
@@ -120,7 +173,7 @@ class DatabaseHelper {
     await db.close();
   }
 
-  // Xóa database (dùng cho testing hoặc reset)
+  // Xóa database
   Future<void> deleteDatabase() async {
     String path = join(await getDatabasesPath(), 'vocab_plus.db');
     await databaseFactory.deleteDatabase(path);
