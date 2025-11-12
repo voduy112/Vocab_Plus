@@ -4,6 +4,7 @@ class Deck {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+  final bool isFavorite;
 
   Deck({
     this.id,
@@ -11,6 +12,7 @@ class Deck {
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
+    this.isFavorite = false,
   });
 
   // Chuyển đổi từ Map (từ database) sang Desk object
@@ -21,6 +23,7 @@ class Deck {
       createdAt: DateTime.parse(map['created_at']),
       updatedAt: DateTime.parse(map['updated_at']),
       isActive: map['is_active'] == 1,
+      isFavorite: (map['is_favorite'] ?? 0) == 1,
     );
   }
 
@@ -32,6 +35,7 @@ class Deck {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'is_active': isActive ? 1 : 0,
+      'is_favorite': isFavorite ? 1 : 0,
     };
   }
 
@@ -42,6 +46,7 @@ class Deck {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    bool? isFavorite,
   }) {
     return Deck(
       id: id ?? this.id,
@@ -49,12 +54,13 @@ class Deck {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
   @override
   String toString() {
-    return 'Deck(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, isActive: $isActive)';
+    return 'Deck(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, isActive: $isActive, isFavorite: $isFavorite)';
   }
 
   @override
@@ -65,7 +71,8 @@ class Deck {
         other.name == name &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
-        other.isActive == isActive;
+        other.isActive == isActive &&
+        other.isFavorite == isFavorite;
   }
 
   @override
@@ -74,6 +81,7 @@ class Deck {
         name.hashCode ^
         createdAt.hashCode ^
         updatedAt.hashCode ^
-        isActive.hashCode;
+        isActive.hashCode ^
+        isFavorite.hashCode;
   }
 }
