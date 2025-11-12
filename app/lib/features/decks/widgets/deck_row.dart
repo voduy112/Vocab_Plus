@@ -49,6 +49,9 @@ class _DeckRowState extends State<DeckRow> with SingleTickerProviderStateMixin {
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: Colors.grey[200]!, width: 0.5),
+                left: widget.desk.isFavorite
+                    ? BorderSide(color: Colors.pink!, width: 4)
+                    : BorderSide.none,
               ),
             ),
             child: Row(
