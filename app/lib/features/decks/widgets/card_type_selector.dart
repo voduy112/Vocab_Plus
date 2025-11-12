@@ -5,7 +5,8 @@ class CardTypeSelector extends StatelessWidget {
   final CardType value;
   final ValueChanged<CardType> onChanged;
 
-  const CardTypeSelector({super.key, required this.value, required this.onChanged});
+  const CardTypeSelector(
+      {super.key, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +31,8 @@ class CardTypeSelector extends StatelessWidget {
               itemHeight: 48,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 helperText: 'Chọn loại thẻ phù hợp với cách học',
               ),
               items: CardType.values.map((e) {
@@ -41,12 +43,12 @@ class CardTypeSelector extends StatelessWidget {
                 switch (e) {
                   case CardType.basis:
                     title = 'Basis Card';
-                    subtitle = 'Đầy đủ thông tin';
+                    subtitle = 'Đơn giản';
                     icon = Icons.description;
                     break;
                   case CardType.reverse:
                     title = 'Reverse Card';
-                    subtitle = 'Đơn giản 2 mặt';
+                    subtitle = 'Tạo 2 thẻ ngước nhau';
                     icon = Icons.swap_horiz;
                     break;
                   case CardType.typing:
@@ -87,5 +89,3 @@ class CardTypeSelector extends StatelessWidget {
     );
   }
 }
-
-
