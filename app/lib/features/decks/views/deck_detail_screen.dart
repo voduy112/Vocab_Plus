@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/models/deck.dart';
 import '../../../core/models/vocabulary.dart';
 import '../services/deck_service.dart';
 import '../services/vocabulary_service.dart';
-import '../../study_session/views/study_session_screen.dart';
 import '../widgets/vocabulary_card.dart';
-import 'package:go_router/go_router.dart';
 
 class DeckDetailScreen extends StatefulWidget {
   final Deck deck;
@@ -28,6 +27,8 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   List<Vocabulary> _filteredVocabularies = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  bool _isSelectionMode = false;
+  Set<int> _selectedVocabularyIds = {};
 
   @override
   void initState() {
@@ -148,32 +149,138 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     }
   }
 
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) {
+        _selectedVocabularyIds.clear();
+      }
+    });
+  }
+
+  void _toggleVocabularySelection(int vocabularyId) {
+    setState(() {
+      if (_selectedVocabularyIds.contains(vocabularyId)) {
+        _selectedVocabularyIds.remove(vocabularyId);
+      } else {
+        _selectedVocabularyIds.add(vocabularyId);
+      }
+    });
+  }
+
+  void _selectAllVocabularies() {
+    setState(() {
+      _selectedVocabularyIds = _filteredVocabularies
+          .where((vocab) => vocab.id != null)
+          .map((vocab) => vocab.id!)
+          .toSet();
+    });
+  }
+
+  void _deselectAllVocabularies() {
+    setState(() {
+      _selectedVocabularyIds.clear();
+    });
+  }
+
+  Future<void> _deleteSelectedVocabularies() async {
+    if (_selectedVocabularyIds.isEmpty) return;
+
+    final count = _selectedVocabularyIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa từ vựng'),
+        content: Text('Bạn có chắc chắn muốn xóa $count từ vựng đã chọn?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        for (final id in _selectedVocabularyIds) {
+          await _vocabularyService.deleteVocabulary(id);
+        }
+        await _loadVocabularies();
+        await _loadDeckStats();
+
+        setState(() {
+          _selectedVocabularyIds.clear();
+          _isSelectionMode = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Đã xóa $count từ vựng thành công!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi khi xóa từ vựng: $e')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.deck.name),
+        title: _isSelectionMode
+            ? Text('Đã chọn: ${_selectedVocabularyIds.length}')
+            : Text(widget.deck.name),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _toggleSelectionMode,
+              )
+            : null,
         actions: [
-          IconButton(
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => StudySessionScreen(deck: widget.deck),
-                ),
-              );
-              // Refresh thống kê sau khi học xong
-              await _loadDeckStats();
-            },
-            icon: const Icon(Icons.play_arrow_rounded),
-            tooltip: 'Bắt đầu học',
-          ),
-          IconButton(
-            onPressed: _addNewVocabulary,
-            icon: const Icon(Icons.add),
-            tooltip: 'Thêm từ vựng',
-          ),
+          if (_isSelectionMode) ...[
+            // Nút chọn tất cả / bỏ chọn tất cả
+            IconButton(
+              onPressed: _selectedVocabularyIds.length ==
+                      _filteredVocabularies.where((v) => v.id != null).length
+                  ? _deselectAllVocabularies
+                  : _selectAllVocabularies,
+              icon: Icon(
+                _selectedVocabularyIds.length ==
+                        _filteredVocabularies.where((v) => v.id != null).length
+                    ? Icons.deselect
+                    : Icons.select_all,
+              ),
+              tooltip: _selectedVocabularyIds.length ==
+                      _filteredVocabularies.where((v) => v.id != null).length
+                  ? 'Bỏ chọn tất cả'
+                  : 'Chọn tất cả',
+            ),
+            // Nút xóa đã chọn
+            if (_selectedVocabularyIds.isNotEmpty)
+              IconButton(
+                onPressed: _deleteSelectedVocabularies,
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Xóa đã chọn',
+              ),
+          ] else ...[
+            IconButton(
+              onPressed: _toggleSelectionMode,
+              icon: const Icon(Icons.checklist),
+              tooltip: 'Chọn để xóa',
+            ),
+          ],
         ],
       ),
       body: Column(
@@ -269,18 +376,107 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                       )
                     : Column(
                         children: [
-                          // Header labels and list
+                          // Header row
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.grey[300]!,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                if (_isSelectionMode) ...[
+                                  const SizedBox(width: 40),
+                                  const SizedBox(width: 8),
+                                ],
+                                // Cột 1: Front
+                                Expanded(
+                                  child: Text(
+                                    'Front',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                                // Divider
+                                Container(
+                                  width: 1,
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 10),
+                                  color: Colors.grey[300],
+                                ),
+                                // Cột 2: Back
+                                Expanded(
+                                  child: Text(
+                                    'Back',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                                // Divider
+                                Container(
+                                  width: 1,
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 10),
+                                  color: Colors.grey[300],
+                                ),
+                                // Cột 3: Ngày tới hạn
+                                SizedBox(
+                                  width: 100,
+                                  child: Text(
+                                    'Due Date',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                                // Space cho icon 3 chấm
+                                if (!_isSelectionMode) ...[
+                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 40),
+                                ],
+                              ],
+                            ),
+                          ),
+                          // List
                           Expanded(
                             child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              padding: const EdgeInsets.only(bottom: 16),
                               itemCount: _filteredVocabularies.length,
                               separatorBuilder: (context, index) =>
                                   const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final vocabulary = _filteredVocabularies[index];
+                                final isSelected = vocabulary.id != null &&
+                                    _selectedVocabularyIds
+                                        .contains(vocabulary.id);
                                 return VocabularyCard(
                                   vocabulary: vocabulary,
-                                  onTap: () => _editVocabulary(vocabulary),
+                                  isSelectionMode: _isSelectionMode,
+                                  isSelected: isSelected,
+                                  onTap: _isSelectionMode
+                                      ? () {
+                                          if (vocabulary.id != null) {
+                                            _toggleVocabularySelection(
+                                                vocabulary.id!);
+                                          }
+                                        }
+                                      : () => _editVocabulary(vocabulary),
                                   onDelete: () => _deleteVocabulary(vocabulary),
                                 );
                               },
@@ -291,11 +487,13 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewVocabulary,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: _isSelectionMode
+          ? null
+          : FloatingActionButton(
+              onPressed: _addNewVocabulary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
     );
   }
 }
