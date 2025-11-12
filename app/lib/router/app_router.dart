@@ -135,7 +135,6 @@ GoRouter createRouter(AuthController auth) {
       ),
     ],
     redirect: (context, state) {
-      // Tuần 1: không bắt buộc login, không cần redirect guard.
       return null;
     },
   );
