@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'due_heat_map.dart';
 
 // Widget phần lịch học
-class StudyScheduleSection extends StatelessWidget {
+class StudyScheduleSection extends StatefulWidget {
   final DateTime start;
   final DateTime end;
 
@@ -13,11 +13,27 @@ class StudyScheduleSection extends StatelessWidget {
   });
 
   @override
+  State<StudyScheduleSection> createState() => _StudyScheduleSectionState();
+}
+
+class _StudyScheduleSectionState extends State<StudyScheduleSection> {
+  int _refreshKey = 0;
+
+  void refresh() {
+    // Invalidate cache and trigger rebuild by changing key
+    DueHeatMap.invalidateAllCache();
+    setState(() {
+      _refreshKey++;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(height: 32),
         Text(
@@ -28,8 +44,13 @@ class StudyScheduleSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        DueHeatMap(start: start, end: end),
-        const SizedBox(height: 500),
+        Flexible(
+          child: DueHeatMap(
+            key: ValueKey(_refreshKey),
+            start: widget.start,
+            end: widget.end,
+          ),
+        ),
       ],
     );
   }
