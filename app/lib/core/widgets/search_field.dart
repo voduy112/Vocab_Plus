@@ -39,7 +39,8 @@ class Search extends StatelessWidget {
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         hintText: hintText ?? 'Search...',
-        prefixIcon: const Icon(Icons.search),
+        hintStyle: TextStyle(color: Colors.black.withOpacity(0.4)),
+        prefixIcon: Icon(Icons.search, color: Colors.black.withOpacity(0.4)),
         suffixIcon: hasText
             ? IconButton(
                 tooltip: 'Clear',
@@ -66,7 +67,8 @@ class Search extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: theme.colorScheme.primary),
+          borderSide:
+              BorderSide(color: theme.colorScheme.primary.withOpacity(0.4)),
           gapPadding: 10,
         ),
       ),
