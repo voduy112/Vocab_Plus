@@ -26,11 +26,13 @@ class DeckOverviewScreen extends StatefulWidget {
 }
 
 class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
+  final DeckRepository _deckRepository = DeckRepository();
   Map<String, dynamic>? _deckStats;
   int _minuteLearningCount = 0;
   int _newCount = 0;
   // ignore: unused_field
   bool _isLoading = false;
+  late Deck _currentDeck;
 
   // Learning metrics
   int _dailyAverage = 0;
@@ -41,6 +43,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   @override
   void initState() {
     super.initState();
+    _currentDeck = widget.deck;
     // Seed with initial values if provided, to avoid empty UI on entry
     if (widget.initialStats != null) {
       _deckStats = Map<String, dynamic>.from(widget.initialStats!);
@@ -59,10 +62,19 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
     try {
       final deckRepo = context.read<DeckRepository>();
       final vocabRepo = context.read<VocabularyRepository>();
-      final stats = await deckRepo.getDeckStats(widget.deck.id!);
+      // Reload deck để lấy trạng thái favorite mới nhất
+      if (_currentDeck.id != null) {
+        final updatedDeck = await deckRepo.getDeckById(_currentDeck.id!);
+        if (updatedDeck != null) {
+          setState(() {
+            _currentDeck = updatedDeck;
+          });
+        }
+      }
+      final stats = await deckRepo.getDeckStats(_currentDeck.id!);
       final minuteLearning =
-          await vocabRepo.countMinuteLearning(widget.deck.id!);
-      final newCount = await vocabRepo.countNewVocabularies(widget.deck.id!);
+          await vocabRepo.countMinuteLearning(_currentDeck.id!);
+      final newCount = await vocabRepo.countNewVocabularies(_currentDeck.id!);
 
       final learningMetrics = await _calculateLearningMetrics();
 
@@ -100,7 +112,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   Future<void> _startStudySession() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => StudySessionScreen(deck: widget.deck),
+        builder: (_) => StudySessionScreen(deck: _currentDeck),
       ),
     );
     await _loadData();
@@ -108,10 +120,29 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
 
   Future<void> _addNewVocabulary() async {
     final result =
-        await context.push<bool>('/add-vocabulary', extra: widget.deck);
+        await context.push<bool>('/add-vocabulary', extra: _currentDeck);
 
     if (result == true && mounted) {
       await _loadData();
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    try {
+      if (_currentDeck.id != null) {
+        final newFavoriteStatus = !_currentDeck.isFavorite;
+        await _deckRepository.toggleFavorite(
+            _currentDeck.id!, newFavoriteStatus);
+        setState(() {
+          _currentDeck = _currentDeck.copyWith(isFavorite: newFavoriteStatus);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi khi cập nhật yêu thích: $e')),
+        );
+      }
     }
   }
 
@@ -161,7 +192,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
         ),
         Expanded(
           child: Text(
-            widget.deck.name,
+            _currentDeck.name,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -178,8 +209,18 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
               tooltip: 'Thêm từ vựng',
             ),
             IconButton(
-              icon: Icon(Icons.favorite_border, color: Colors.grey[600]),
-              onPressed: () {},
+              icon: Icon(
+                _currentDeck.isFavorite
+                    ? Icons.favorite
+                    : Icons.favorite_border,
+                color: _currentDeck.isFavorite
+                    ? Colors.red[600]
+                    : Colors.grey[600],
+              ),
+              onPressed: _toggleFavorite,
+              tooltip: _currentDeck.isFavorite
+                  ? 'Bỏ yêu thích'
+                  : 'Thêm vào yêu thích',
             ),
           ],
         ),
