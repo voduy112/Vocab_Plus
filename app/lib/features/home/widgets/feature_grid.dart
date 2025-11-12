@@ -7,9 +7,18 @@ class FeatureGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          'Chức năng',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 16),
         // 2 cards nhỏ ở trên
         Row(
           children: [
@@ -18,8 +27,13 @@ class FeatureGrid extends StatelessWidget {
               child: _FeatureCard(
                 icon: Icons.search_rounded,
                 label: 'Tìm kiếm từ',
-                bgColor: Colors.blue.shade50,
-                iconColor: Colors.blue.shade700,
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade400, Colors.blue.shade600],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                iconColor: Colors.white,
+                textColor: Colors.white,
                 onTap: () {
                   context.go('/tabs/search');
                 },
@@ -31,8 +45,13 @@ class FeatureGrid extends StatelessWidget {
               child: _FeatureCard(
                 icon: Icons.folder_rounded,
                 label: 'Quản lý bộ từ',
-                bgColor: Colors.purple.shade50,
-                iconColor: Colors.purple.shade700,
+                gradient: LinearGradient(
+                  colors: [Colors.purple.shade400, Colors.purple.shade600],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                iconColor: Colors.white,
+                textColor: Colors.white,
                 onTap: () {
                   context.go('/tabs/decks');
                 },
@@ -63,15 +82,17 @@ class FeatureGrid extends StatelessWidget {
 class _FeatureCard extends StatefulWidget {
   final IconData icon;
   final String label;
-  final Color bgColor;
+  final LinearGradient? gradient;
   final Color iconColor;
+  final Color? textColor;
   final VoidCallback onTap;
 
   const _FeatureCard({
     required this.icon,
     required this.label,
-    required this.bgColor,
+    this.gradient,
     required this.iconColor,
+    this.textColor,
     required this.onTap,
   });
 
@@ -132,7 +153,7 @@ class _FeatureCardState extends State<_FeatureCard>
               child: Container(
                 height: 120,
                 decoration: BoxDecoration(
-                  color: widget.bgColor,
+                  gradient: widget.gradient,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -161,10 +182,10 @@ class _FeatureCardState extends State<_FeatureCard>
                     const Spacer(),
                     Text(
                       widget.label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: widget.textColor ?? Colors.black87,
                       ),
                     ),
                   ],
