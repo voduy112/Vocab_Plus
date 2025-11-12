@@ -121,25 +121,18 @@ class SrsService {
           break;
       }
 
-      // Tính E-Factor theo SM-2 (trừ Again case - sẽ xử lý riêng)
-      if (choice != SrsChoice.again) {
-        ef = (ef + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))).clamp(1.3, 3.0);
-      }
+      ef = (ef + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))).clamp(1.3, 3.0);
 
       if (choice == SrsChoice.again) {
-        // Giảm E-Factor theo SM-2 (q=1 sẽ tự động giảm)
-        ef = (ef + (0.1 - (5 - 1) * (0.08 + (5 - 1) * 0.02))).clamp(1.3, 3.0);
         lapses = lapses + 1;
         srsType = 1;
         srsQueue = 1;
         interval = 0;
-        due =
-            now.add(const Duration(minutes: 1)); // Minute learning (Anki-like)
+        due = now.add(const Duration(minutes: 1));
         dueIsMinutes = true;
         reps = reps + 1;
         left = 1000 + 2;
       } else if (choice == SrsChoice.hard) {
-        // Hard: interval * 1.2 (Anki extension, không phải SM-2)
         if (interval < 1) {
           interval = 1;
         } else {
@@ -150,11 +143,8 @@ class SrsService {
         dueIsMinutes = false;
         reps = reps + 1;
       } else if (choice == SrsChoice.good) {
-        // SM-2: I(1)=1, I(2)=6, I(n>2)=I(n-1)*EF
-        if (reps == 1) {
-          interval = 1;
-        } else if (reps == 2) {
-          interval = 6;
+        if (interval < 1) {
+          interval = 2;
         } else {
           interval = (interval * ef).round();
           if (interval < 1) interval = 1;
@@ -163,16 +153,12 @@ class SrsService {
         dueIsMinutes = false;
         reps = reps + 1;
       } else {
-        // easy
-        // SM-2: I(1)=1, I(2)=6, I(n>2)=I(n-1)*EF (không nhân thêm 1.3)
-        if (reps == 1) {
-          interval = 1;
-        } else if (reps == 2) {
-          interval = 6;
+        if (interval < 1) {
+          interval = 4;
         } else {
           int goodInterval = (interval * ef).round();
           if (goodInterval < 1) goodInterval = 1;
-          interval = goodInterval; // Không nhân 1.3
+          interval = (goodInterval * 1.3).round();
         }
         if (interval < 1) interval = 1;
         due = _startOfDay(now.add(Duration(days: interval)));
