@@ -1,6 +1,7 @@
 // features/decks/deck_screen.dart
 import 'package:flutter/material.dart';
 import '../../../core/models/deck.dart';
+import '../../../core/widgets/search_field.dart';
 import '../services/deck_service.dart';
 import '../services/deck_preload_cache.dart';
 import 'deck_overview_screen.dart';
@@ -115,6 +116,11 @@ class _DecksScreenState extends State<DecksScreen>
   void _sortDecks() {
     setState(() {
       _filteredDecks.sort((a, b) {
+        // Ưu tiên deck yêu thích lên đầu
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+
+        // Nếu cùng trạng thái favorite, sắp xếp theo sortOption
         switch (_sortOption) {
           case DeskSortOption.nameAsc:
             return a.name.toLowerCase().compareTo(b.name.toLowerCase());
@@ -266,52 +272,12 @@ class _DecksScreenState extends State<DecksScreen>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Container(
-                    height: 48,
-                    child: TextField(
+                  child: SizedBox(
+                    height: 40,
+                    child: Search(
                       controller: _searchController,
+                      hintText: 'Search decks...',
                       autofocus: true,
-                      decoration: InputDecoration(
-                        hintText: 'Search decks...',
-                        hintStyle: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 14,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: Colors.grey[600],
-                          size: 20,
-                        ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(
-                                  Icons.clear,
-                                  color: Colors.grey[600],
-                                  size: 18,
-                                ),
-                                onPressed: () {
-                                  _searchController.clear();
-                                },
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide:
-                              BorderSide(color: Colors.blue[400]!, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                      ),
                     ),
                   ),
                 ),
@@ -409,8 +375,8 @@ class _DecksScreenState extends State<DecksScreen>
     );
   }
 
-  void _navigateToDeckDetail(Deck deck) {
-    Navigator.of(context).push(
+  void _navigateToDeckDetail(Deck deck) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) {
           final stats = (deck.id != null) ? _deckStats[deck.id!] : null;
@@ -426,6 +392,9 @@ class _DecksScreenState extends State<DecksScreen>
         },
       ),
     );
+
+    // Refresh danh sách khi quay lại để cập nhật trạng thái favorite
+    await _loadDecks(forceReload: true);
   }
 
   void _showDeckContextMenu(Deck deck) {

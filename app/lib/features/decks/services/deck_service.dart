@@ -14,4 +14,6 @@ class DeckService extends ChangeNotifier {
       _deckRepository.searchDecks(query);
   Future<Map<String, dynamic>> getDeckStats(int deckId) =>
       _deckRepository.getDeckStats(deckId);
+  Future<int> toggleFavorite(int id, bool isFavorite) =>
+      _deckRepository.toggleFavorite(id, isFavorite);
 }

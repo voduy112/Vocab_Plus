@@ -88,6 +88,20 @@ class DeckRepository {
     });
   }
 
+  // Toggle favorite status
+  Future<int> toggleFavorite(int id, bool isFavorite) async {
+    final db = await _databaseHelper.database;
+    return await db.update(
+      'decks',
+      {
+        'is_favorite': isFavorite ? 1 : 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   // Lấy thống kê deck
   Future<Map<String, dynamic>> getDeckStats(int deskId) async {
     final db = await _databaseHelper.database;
