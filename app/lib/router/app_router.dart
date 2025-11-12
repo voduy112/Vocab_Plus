@@ -15,6 +15,7 @@ import '../../core/widgets/ai_chat_button.dart';
 import '../../core/models/deck.dart';
 import '../../core/models/vocabulary.dart';
 import '../../features/pronunciation/views/select_deck_screen.dart';
+import '../../features/pronunciation/views/pronunciation_practice_screen.dart';
 import '../../core/widgets/animated_splash_screen.dart';
 
 GoRouter createRouter(AuthController auth) {
@@ -124,6 +125,13 @@ GoRouter createRouter(AuthController auth) {
       GoRoute(
         path: '/pronunciation/select-deck',
         builder: (context, state) => const PronunciationSelectDeckScreen(),
+      ),
+      GoRoute(
+        path: '/pronunciation/practice',
+        builder: (context, state) {
+          final deck = state.extra as Deck;
+          return PronunciationPracticeScreen(deck: deck);
+        },
       ),
     ],
     redirect: (context, state) {
