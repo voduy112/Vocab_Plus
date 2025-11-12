@@ -7,12 +7,31 @@ class DueHeatMap extends StatefulWidget {
   final DateTime start;
   final DateTime end;
   final int? deckId;
+  final VoidCallback? onRefreshRequested;
 
-  const DueHeatMap(
-      {super.key, required this.start, required this.end, this.deckId});
+  const DueHeatMap({
+    super.key,
+    required this.start,
+    required this.end,
+    this.deckId,
+    this.onRefreshRequested,
+  });
 
   @override
   State<DueHeatMap> createState() => _DueHeatMapState();
+
+  // Static method to invalidate cache for all heatmaps
+  static void invalidateAllCache() {
+    _DueHeatMapState._cacheMap.clear();
+    _DueHeatMapState._yearsCachedMap.clear();
+  }
+
+  // Static method to invalidate cache for specific deck
+  static void invalidateCacheForDeck(int? deckId) {
+    final key = '${deckId ?? 'all'}';
+    _DueHeatMapState._cacheMap.remove(key);
+    _DueHeatMapState._yearsCachedMap.remove(key);
+  }
 }
 
 class _DueHeatMapState extends State<DueHeatMap>
@@ -38,6 +57,10 @@ class _DueHeatMapState extends State<DueHeatMap>
     super.initState();
     _viewStart = widget.start;
     _viewEnd = widget.end;
+    // Listen to refresh requests if callback provided
+    if (widget.onRefreshRequested != null) {
+      // Store callback for later use
+    }
     // Initialize cache for this deck if not exists
     if (!_cacheMap.containsKey(_yearsCacheKey)) {
       _cacheMap[_yearsCacheKey] = {};
@@ -54,18 +77,22 @@ class _DueHeatMapState extends State<DueHeatMap>
   @override
   void didUpdateWidget(covariant DueHeatMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Always ensure latest data by invalidating cache for this deck and reloading
+    // Update view range if changed
     if (widget.deckId != oldWidget.deckId ||
         widget.start != oldWidget.start ||
         widget.end != oldWidget.end) {
       _viewStart = widget.start;
       _viewEnd = widget.end;
     }
-    _invalidateCacheForKey(_yearsCacheKey);
-    setState(() {
-      _isLoading = true;
-    });
-    _primeCache();
+
+    // If key changed, it means we need to refresh (cache was invalidated)
+    if (widget.key != oldWidget.key) {
+      _invalidateCacheForKey(_yearsCacheKey);
+      setState(() {
+        _isLoading = true;
+      });
+      _primeCache();
+    }
   }
 
   @override
@@ -118,6 +145,15 @@ class _DueHeatMapState extends State<DueHeatMap>
   void _invalidateCacheForKey(String key) {
     _cacheMap.remove(key);
     _yearsCachedMap.remove(key);
+  }
+
+  // Public method to refresh the heatmap data
+  void refresh() {
+    _invalidateCacheForKey(_yearsCacheKey);
+    setState(() {
+      _isLoading = true;
+    });
+    _primeCache();
   }
 
   // Deprecated fetch call replaced by cached loading
