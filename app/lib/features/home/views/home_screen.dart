@@ -1,28 +1,11 @@
 // features/main/home_screen.dart
 import 'package:flutter/material.dart';
 import '../widgets/home_header.dart';
-import '../widgets/scrollable_content.dart';
+import '../widgets/feature_grid.dart';
+import '../widgets/study_schedule_section.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,22 +15,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            // Lớp dưới: Header (có hiệu ứng khi scroll)
-            HomeHeader(scrollController: _scrollController),
-            // Lớp giữa: Nội dung có thể scroll (chồng lên header)
-            ScrollableContent(
-              scrollController: _scrollController,
-              start: start,
-              end: end,
-            ),
-            // Lớp trên cùng: Notification icon (không bị che phủ)
-            Positioned(
-              top: 20,
-              right: 16,
-              child: AnimatedNotificationIcon(
-                scrollController: _scrollController,
+            // Header
+            const HomeHeader(),
+            // Nội dung
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    0,
+                    20,
+                    MediaQuery.of(context).padding.bottom + 100,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Grid chức năng
+                      const FeatureGrid(),
+                      // Phần lịch học
+                      StudyScheduleSection(start: start, end: end),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
