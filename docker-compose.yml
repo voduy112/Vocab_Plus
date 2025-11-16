@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  # Node.js API Service
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: vocab-plus-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - ALIGNER_URL=http://aligner:8000
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/vocab_plus}
+    volumes:
+      - ./api/.env:/app/.env:ro
+      - ./api/firebase-service-account.json:/app/firebase-service-account.json:ro
+    depends_on:
+      - aligner
+      - mongodb
+    networks:
+      - vocab-plus-network
+    restart: unless-stopped
+
+  # Python FastAPI Aligner Service
+  aligner:
+    build:
+      context: ./aligner
+      dockerfile: Dockerfile
+    container_name: vocab-plus-aligner
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount code để thay đổi code không cần rebuild
+      # Exclude phoneme_model folder để không ghi đè model đã tải
+      - ./aligner:/app
+      - /app/phoneme_model # Anonymous volume để bảo vệ model folder
+    networks:
+      - vocab-plus-network
+    restart: unless-stopped
+
+  # MongoDB Service (optional - if you want to run MongoDB in Docker)
+  mongodb:
+    image: mongo:7
+    container_name: vocab-plus-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=vocab_plus
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - vocab-plus-network
+    restart: unless-stopped
+
+networks:
+  vocab-plus-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:

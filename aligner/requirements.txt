@@ -1,0 +1,16 @@
+# Pin NumPy < 2.0 first to avoid compatibility issues with ctc-segmentation
+numpy<2.0,>=1.24.0
+# CPU PyTorch wheels - require >= 2.6 for security (CVE-2025-32434)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.6.0
+transformers>=4.20.0,<5.0.0
+packaging>=21.0
+# Install after NumPy is finalized to avoid ABI mismatch
+ctc-segmentation==1.7.4
+fastapi
+uvicorn[standard]
+soundfile
+g2p_en
+faster-whisper
+python-multipart
+phonemizer
