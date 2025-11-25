@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'history_tab.dart';
 import '../../../core/models/deck.dart';
+import '../../../core/api/api_client.dart';
 import '../../decks/services/deck_preload_cache.dart';
 import '../../decks/services/deck_service.dart';
+import '../../decks/services/vocabulary_service.dart';
+import '../services/voice_coach_service.dart';
 
 class PronunciationSelectDeckScreen extends StatefulWidget {
   const PronunciationSelectDeckScreen({super.key});
@@ -17,6 +20,8 @@ class _PronunciationSelectDeckScreenState
     extends State<PronunciationSelectDeckScreen> {
   final DeckPreloadCache _cache = DeckPreloadCache();
   final DeckService _deckService = DeckService();
+  final VocabularyService _vocabularyService = VocabularyService();
+  final Map<int, bool> _preloadingDecks = {}; // deck.id -> isPreloading
 
   bool _isLoading = true;
   List<Deck> _decks = const [];
@@ -36,6 +41,8 @@ class _PronunciationSelectDeckScreenState
         _decks = cached;
         _isLoading = false;
       });
+      // Preload audio cho tất cả deck trong background
+      _preloadAllDecksAudio(cached);
       return;
     }
 
@@ -44,6 +51,8 @@ class _PronunciationSelectDeckScreenState
       setState(() {
         _decks = decks;
       });
+      // Preload audio cho tất cả deck trong background
+      _preloadAllDecksAudio(decks);
     } finally {
       if (mounted) {
         setState(() {
@@ -53,10 +62,78 @@ class _PronunciationSelectDeckScreenState
     }
   }
 
+  /// Preload audio cho tất cả deck trong background
+  void _preloadAllDecksAudio(List<Deck> decks) {
+    // Preload cho tất cả deck trong background (không block UI)
+    for (final deck in decks) {
+      if (deck.id != null) {
+        _preloadAudioForDeck(deck);
+      }
+    }
+  }
+
   List<Deck> get _filteredDecks {
     if (_query.trim().isEmpty) return _decks;
     final lower = _query.trim().toLowerCase();
     return _decks.where((d) => d.name.toLowerCase().contains(lower)).toList();
+  }
+
+  /// Preload audio cho deck được chọn
+  Future<void> _preloadAudioForDeck(Deck deck) async {
+    if (deck.id == null) return;
+    if (_preloadingDecks[deck.id!] == true) return; // Đang preload rồi
+
+    setState(() {
+      _preloadingDecks[deck.id!] = true;
+    });
+
+    try {
+      // Khởi tạo ApiClient và VoiceCoachService
+      const apiBaseUrl = String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://192.168.2.167:3000',
+      );
+      final apiClient = ApiClient(apiBaseUrl);
+      final voiceCoachService = VoiceCoachService(apiClient: apiClient);
+
+      // Lấy danh sách từ vựng
+      final vocabularies =
+          await _vocabularyService.getVocabulariesByDeckId(deck.id!);
+      final activeVocabularies = vocabularies.where((v) => v.isActive).toList();
+
+      // Preload audio cho từng từ vựng (trong background, không block UI)
+      for (final vocab in activeVocabularies) {
+        if (!mounted) break;
+        try {
+          // Kiểm tra xem đã có audio chưa
+          final existingPath = await voiceCoachService.getAudioPath(vocab);
+          if (existingPath == null) {
+            // Chưa có, tải trong background
+            await voiceCoachService.loadVoiceCoachAudio(vocab);
+          }
+        } catch (e) {
+          // Bỏ qua lỗi khi preload, không ảnh hưởng đến UX
+          debugPrint('[Preload] Error loading audio for ${vocab.front}: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[Preload] Error preloading audio for deck ${deck.name}: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _preloadingDecks[deck.id!] = false;
+        });
+      }
+    }
+  }
+
+  /// Xử lý khi chọn deck
+  void _handleDeckTap(Deck deck) {
+    // Navigate đến practice screen ngay
+    context.push('/pronunciation/practice', extra: deck);
+
+    // Preload audio trong background (không block navigation)
+    _preloadAudioForDeck(deck);
   }
 
   @override
@@ -147,13 +224,7 @@ class _PronunciationSelectDeckScreenState
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 6),
                                 child: InkWell(
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content:
-                                              Text('Chọn bộ: ${deck.name}')),
-                                    );
-                                  },
+                                  onTap: () => _handleDeckTap(deck),
                                   borderRadius: BorderRadius.circular(16),
                                   child: Ink(
                                     decoration: BoxDecoration(
