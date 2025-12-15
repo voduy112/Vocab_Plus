@@ -146,7 +146,13 @@ async def align(
         # Build words response (simplified - no timings)
         words_response = []
         ph_ref_flat = result["ph_ref_flat"]
-        ph_by_word, _ = words_to_phonemes(words_ref)
+        # Sử dụng IPA thay vì ARPABET
+        ph_by_word = result.get("ph_by_word_ipa")
+        if not ph_by_word:
+            # Fallback: nếu không có IPA, dùng ARPABET nhưng log warning
+            logger.warning("ph_by_word_ipa not found, falling back to ARPABET")
+            _, ph_by_word = words_to_phonemes(words_ref)
+        phoneme_correctness = result.get("phoneme_correctness") or []
         
         # Tính word scores dựa trên phoneme coverage
         word_scores = []
@@ -168,14 +174,29 @@ async def align(
         phonemes_response = []
         ph_idx = 0
         for word_idx, word_ph_list in enumerate(ph_by_word):
-            for ph in word_ph_list:
+            correctness_for_word = (
+                phoneme_correctness[word_idx]
+                if word_idx < len(phoneme_correctness)
+                else []
+            )
+            logger.info(f"[RESULT][WORD #{word_idx}] '{words_ref[word_idx] if word_idx < len(words_ref) else '?'}'")
+            for ph_idx, ph in enumerate(word_ph_list):
+                is_correct = (
+                    correctness_for_word[ph_idx]
+                    if ph_idx < len(correctness_for_word)
+                    else False
+                )
                 phonemes_response.append({
                     "wordIndex": word_idx,
                     "p": ph,
                     "start": 0,  # No timing available
                     "end": duration_ms,
-                    "score": round(accuracy_ph, 1)  # Simplified
+                    "score": 100.0 if is_correct else 0.0,
+                    "isCorrect": is_correct
                 })
+                logger.info(
+                    f"    Phoneme {ph_idx:02d}: {ph:<4} -> {'✅' if is_correct else '❌'}"
+                )
 
         # Build mistakes: words with low completeness
         mistakes = []
@@ -183,6 +204,11 @@ async def align(
         for word_idx, word in enumerate(words_ref):
             # Check if word is covered (from completeness calculation)
             ph_seq_word = ph_by_word[word_idx] if word_idx < len(ph_by_word) else []
+            correctness_for_word = (
+                phoneme_correctness[word_idx]
+                if word_idx < len(phoneme_correctness)
+                else []
+            )
             
             if not word_covered(ph_seq_word, pred_simple):
                 mistakes.append({
@@ -194,11 +220,17 @@ async def align(
                     "phonemes": [
                         {
                             "p": ph,
-                            "score": round(accuracy_ph, 1),
+                            "score": 100.0 if (
+                                ph_idx < len(correctness_for_word)
+                                and correctness_for_word[ph_idx]
+                            ) else 0.0,
+                            "isCorrect": correctness_for_word[ph_idx]
+                            if ph_idx < len(correctness_for_word)
+                            else False,
                             "start": 0,
                             "end": duration_ms
                         }
-                        for ph in ph_seq_word
+                        for ph_idx, ph in enumerate(ph_seq_word)
                     ]
                 })
 
