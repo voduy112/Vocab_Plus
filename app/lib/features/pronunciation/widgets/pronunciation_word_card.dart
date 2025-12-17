@@ -61,12 +61,6 @@ class PronunciationWordCard extends StatelessWidget {
               text: vocabulary.front,
               solidColor: (isHighScore || isLowScore) ? Colors.white : null,
             ),
-            const SizedBox(height: 12),
-            Text(
-              vocabulary.back,
-              textAlign: TextAlign.center,
-              style: secondaryStyle,
-            ),
             const SizedBox(height: 24),
             Text(
               statusMessage,

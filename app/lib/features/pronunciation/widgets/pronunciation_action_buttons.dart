@@ -8,6 +8,7 @@ class PronunciationActionButtons extends StatelessWidget {
   final bool isRecording;
   final bool isEvaluating;
   final bool isLoadingAudio;
+  final bool isMicLocked;
 
   const PronunciationActionButtons({
     super.key,
@@ -18,6 +19,7 @@ class PronunciationActionButtons extends StatelessWidget {
     required this.isRecording,
     required this.isEvaluating,
     required this.isLoadingAudio,
+    required this.isMicLocked,
   });
 
   @override
@@ -37,6 +39,7 @@ class PronunciationActionButtons extends StatelessWidget {
           child: PrimaryActionButton(
             isRecording: isRecording,
             isEvaluating: isEvaluating,
+            isLocked: isMicLocked,
             onStartRecording: onStartRecording,
             onStopRecording: onStopRecording,
           ),
@@ -115,6 +118,7 @@ class SecondaryActionButton extends StatelessWidget {
 class PrimaryActionButton extends StatelessWidget {
   final bool isRecording;
   final bool isEvaluating;
+  final bool isLocked;
   final VoidCallback onStartRecording;
   final VoidCallback onStopRecording;
 
@@ -122,6 +126,7 @@ class PrimaryActionButton extends StatelessWidget {
     super.key,
     required this.isRecording,
     required this.isEvaluating,
+    required this.isLocked,
     required this.onStartRecording,
     required this.onStopRecording,
   });
@@ -129,8 +134,12 @@ class PrimaryActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final backgroundColor =
-        isRecording ? Colors.redAccent : theme.colorScheme.primary;
+    final bool isDisabled = isEvaluating || isLocked;
+    final backgroundColor = isRecording
+        ? Colors.redAccent
+        : isDisabled
+            ? theme.colorScheme.primary.withOpacity(0.4)
+            : theme.colorScheme.primary;
     return AspectRatio(
       aspectRatio: 1,
       child: Material(
@@ -139,7 +148,7 @@ class PrimaryActionButton extends StatelessWidget {
         elevation: 6,
         child: InkWell(
           borderRadius: BorderRadius.circular(32),
-          onTap: isEvaluating
+          onTap: isDisabled
               ? null
               : (isRecording ? onStopRecording : onStartRecording),
           child: Center(
@@ -153,7 +162,11 @@ class PrimaryActionButton extends StatelessWidget {
                     ),
                   )
                 : Icon(
-                    isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                    isRecording
+                        ? Icons.stop_rounded
+                        : (isLocked
+                            ? Icons.volume_up_rounded
+                            : Icons.mic_rounded),
                     color: Colors.white,
                     size: 40,
                   ),

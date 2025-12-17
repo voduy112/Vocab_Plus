@@ -3,15 +3,21 @@ import 'package:flutter/material.dart';
 class PronunciationNavigationBar extends StatelessWidget {
   final bool hasPrevious;
   final bool hasNext;
+  final bool isLast;
+  final bool isSubmitting;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
+  final VoidCallback? onSubmit;
 
   const PronunciationNavigationBar({
     super.key,
     required this.hasPrevious,
     required this.hasNext,
+    required this.isLast,
+    required this.isSubmitting,
     required this.onPrevious,
     required this.onNext,
+    this.onSubmit,
   });
 
   @override
@@ -41,19 +47,33 @@ class PronunciationNavigationBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextButton.icon(
-              onPressed: hasNext ? onNext : null,
-              icon: const Icon(Icons.arrow_forward_ios_rounded),
-              label: const Text('Next'),
-              style: TextButton.styleFrom(
-                alignment: Alignment.centerRight,
-              ),
-            ),
+            child: isLast
+                ? TextButton.icon(
+                    onPressed:
+                        (onSubmit != null && !isSubmitting) ? onSubmit : null,
+                    icon: isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.exit_to_app_rounded),
+                    label: const Text('Hoàn thành'),
+                    style: TextButton.styleFrom(
+                      alignment: Alignment.centerRight,
+                    ),
+                  )
+                : TextButton.icon(
+                    onPressed: hasNext ? onNext : null,
+                    icon: const Icon(Icons.arrow_forward_ios_rounded),
+                    label: const Text('Next'),
+                    style: TextButton.styleFrom(
+                      alignment: Alignment.centerRight,
+                    ),
+                  ),
           ),
         ],
       ),
     );
   }
 }
-
-

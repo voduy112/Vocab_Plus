@@ -13,6 +13,7 @@ import '../../../core/api/api_client.dart';
 import '../../decks/services/vocabulary_service.dart';
 import '../services/pronunciation_service.dart';
 import '../services/voice_coach_service.dart';
+import '../services/pronunciation_session_history_service.dart';
 import '../widgets/pronunciation_app_bar.dart';
 import '../widgets/pronunciation_empty_state.dart';
 import '../widgets/pronunciation_navigation_bar.dart';
@@ -39,6 +40,8 @@ class _PronunciationPracticeScreenState
   final AudioRecorder _recorder = AudioRecorder();
   late final PronunciationService _pronunciationService;
   late final VoiceCoachService _voiceCoachService;
+  final PronunciationSessionHistoryService _sessionHistoryService =
+      PronunciationSessionHistoryService();
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlayingVoiceCoach = false;
   bool _isLoadingAudio = false;
@@ -50,6 +53,8 @@ class _PronunciationPracticeScreenState
   bool _isEvaluating = false;
   bool _hasResult = false;
   PronunciationResult? _result;
+  final Map<int, PronunciationResult> _sessionResults = {};
+  bool _isSubmitting = false;
   bool _showConfetti = false;
   Timer? _confettiTimer;
   int? _recordStartedAtMs;
@@ -73,7 +78,7 @@ class _PronunciationPracticeScreenState
     super.initState();
     const apiBaseUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://192.168.88.209:3000',
+      defaultValue: 'http://192.168.2.167:3000',
     );
     final apiClient = ApiClient(apiBaseUrl);
     _pronunciationService = PronunciationService(apiClient);
@@ -489,6 +494,7 @@ class _PronunciationPracticeScreenState
     if (_isRecording || _isEvaluating) return;
     _cancelConfetti();
     setState(() {
+      _sessionResults.remove(_currentIndex);
       _hasResult = false;
       _result = null;
     });
@@ -524,6 +530,8 @@ class _PronunciationPracticeScreenState
       debugPrint('[Pronun] Received response from API');
 
       final isHighScore = result.overall >= 80;
+
+      _sessionResults[_currentIndex] = result;
 
       setState(() {
         _result = result;
@@ -598,13 +606,37 @@ class _PronunciationPracticeScreenState
     return Colors.red;
   }
 
+  void _showDetailsBottomSheet() {
+    if (!_hasResult || _result == null) return;
+    PronunciationDetailsBottomSheet.show(
+      context,
+      result: _result!,
+      currentExerciseIndex: _currentIndex,
+      colorResolver: _getScoreColor,
+      isPhonemeCorrect: _isPhonemeCorrect,
+    );
+  }
+
+  String _statusMessage() {
+    if (_isEvaluating) return 'Đang chấm điểm...';
+    if (_isRecording) return 'Đang nghe bạn nói';
+    if (_hasResult && _result != null) {
+      if (_result!.overall >= 80) return 'Tuyệt vời!';
+      if (_result!.overall >= 60) return 'Gần đến rồi!';
+      return 'Thử lại!';
+    }
+    return 'Bắt đầu nói';
+  }
+
+  bool _isPhonemeCorrect(double score) => score >= 70;
+
   void _nextVocabulary() {
     if (_currentIndex < _vocabularies.length - 1) {
       _cancelConfetti();
       setState(() {
         _currentIndex++;
-        _hasResult = false;
-        _result = null;
+        _result = _sessionResults[_currentIndex];
+        _hasResult = _result != null;
       });
     }
   }
@@ -614,8 +646,8 @@ class _PronunciationPracticeScreenState
       _cancelConfetti();
       setState(() {
         _currentIndex--;
-        _hasResult = false;
-        _result = null;
+        _result = _sessionResults[_currentIndex];
+        _hasResult = _result != null;
       });
     }
   }
@@ -671,6 +703,7 @@ class _PronunciationPracticeScreenState
                       isEvaluating: _isEvaluating,
                       showConfetti: _showConfetti,
                       isLoadingAudio: _isLoadingAudio,
+                      isVoiceCoachBusy: _isPlayingVoiceCoach || _isLoadingAudio,
                       onVoiceCoach: _handleVoiceCoach,
                       onRepeat: _handleRepeat,
                       onStartRecording: _startRecording,
@@ -687,35 +720,297 @@ class _PronunciationPracticeScreenState
                 child: PronunciationNavigationBar(
                   hasPrevious: _currentIndex > 0,
                   hasNext: _currentIndex < _vocabularies.length - 1,
+                  isLast: _currentIndex == _vocabularies.length - 1,
+                  isSubmitting: _isSubmitting,
                   onPrevious: _previousVocabulary,
                   onNext: _nextVocabulary,
+                  onSubmit: _handleSubmitSession,
                 ),
               ),
             ),
     );
   }
 
-  void _showDetailsBottomSheet() {
-    if (!_hasResult || _result == null) return;
-    PronunciationDetailsBottomSheet.show(
-      context,
-      result: _result!,
-      currentExerciseIndex: _currentIndex,
-      colorResolver: _getScoreColor,
-      isPhonemeCorrect: _isPhonemeCorrect,
+  Future<void> _handleSubmitSession() async {
+    if (_isSubmitting) return;
+    if (_sessionResults.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn chưa luyện từ nào trong phiên này')),
+      );
+      return;
+    }
+
+    // Hiển thị dialog xác nhận
+    final shouldSubmit = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Hoàn thành phiên luyện?'),
+          content: const Text(
+            'Bạn muốn hoàn thành phiên luyện này? '
+            'Kết quả sẽ được lưu vào lịch sử học.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Hoàn thành'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSubmit != true) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Lưu lịch sử phiên học
+      final totalWords = _vocabularies.length;
+      final practicedCount = _sessionResults.length;
+      final results = _sessionResults.values.toList();
+
+      double avgOverall = 0;
+      double avgAccuracy = 0;
+      double avgFluency = 0;
+      double avgCompleteness = 0;
+      int highCount = 0;
+      int lowCount = 0;
+
+      for (final r in results) {
+        avgOverall += r.overall;
+        avgAccuracy += r.accuracy;
+        avgFluency += r.fluency;
+        avgCompleteness += r.completeness;
+        if (r.overall >= 80) {
+          highCount++;
+        } else if (r.overall < 60) {
+          lowCount++;
+        }
+      }
+
+      if (results.isNotEmpty) {
+        avgOverall /= results.length;
+        avgAccuracy /= results.length;
+        avgFluency /= results.length;
+        avgCompleteness /= results.length;
+
+        unawaited(_sessionHistoryService.addSession(
+          deck: widget.deck,
+          totalWords: totalWords,
+          practicedWords: practicedCount,
+          avgOverall: avgOverall,
+          avgAccuracy: avgAccuracy,
+          avgFluency: avgFluency,
+          avgCompleteness: avgCompleteness,
+          highCount: highCount,
+          lowCount: lowCount,
+        ));
+      }
+
+      _showSessionSummary();
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    });
+  }
+
+  void _showSessionSummary() {
+    final totalWords = _vocabularies.length;
+    final practicedCount = _sessionResults.length;
+    final results = _sessionResults.values.toList();
+
+    double avgOverall = 0;
+    double avgAccuracy = 0;
+    double avgFluency = 0;
+    double avgCompleteness = 0;
+    int highCount = 0;
+    int lowCount = 0;
+
+    for (final r in results) {
+      avgOverall += r.overall;
+      avgAccuracy += r.accuracy;
+      avgFluency += r.fluency;
+      avgCompleteness += r.completeness;
+      if (r.overall >= 80) {
+        highCount++;
+      } else if (r.overall < 60) {
+        lowCount++;
+      }
+    }
+
+    avgOverall /= results.length;
+    avgAccuracy /= results.length;
+    avgFluency /= results.length;
+    avgCompleteness /= results.length;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              Text(
+                'Tổng kết phiên luyện',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Bạn đã luyện $practicedCount / $totalWords từ trong bộ "${widget.deck.name}".',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              if (results.isNotEmpty) ...[
+                Row(
+                  children: [
+                    _SessionStatChip(
+                      label: 'Điểm trung bình',
+                      value: avgOverall,
+                      color: Colors.indigo,
+                    ),
+                    const SizedBox(width: 8),
+                    _SessionStatChip(
+                      label: 'Độ chính xác',
+                      value: avgAccuracy,
+                      color: Colors.blue,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _SessionStatChip(
+                      label: 'Độ trôi chảy',
+                      value: avgFluency,
+                      color: Colors.purple,
+                    ),
+                    const SizedBox(width: 8),
+                    _SessionStatChip(
+                      label: 'Độ đầy đủ',
+                      value: avgCompleteness,
+                      color: Colors.teal,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+              Row(
+                children: [
+                  Icon(Icons.emoji_events_rounded,
+                      size: 20, color: Colors.green[600]),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$highCount từ đạt ≥ 80 điểm',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.flag_rounded, size: 20, color: Colors.orange[700]),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$lowCount từ dưới 60 điểm (cần luyện thêm)',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Đóng bottom sheet
+                    Navigator.of(context).pop(); // Trở về màn hình trước
+                  },
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'Hoàn thành',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
+}
 
-  String _statusMessage() {
-    if (_isEvaluating) return 'Đang chấm điểm...';
-    if (_isRecording) return 'Đang nghe bạn nói';
-    if (_hasResult && _result != null) {
-      if (_result!.overall >= 80) return 'Tuyệt vời!';
-      if (_result!.overall >= 60) return 'Gần đến rồi!';
-      return 'Thử lại!';
-    }
-    return 'Bắt đầu nói';
+class _SessionStatChip extends StatelessWidget {
+  const _SessionStatChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[700],
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value.toStringAsFixed(1),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  bool _isPhonemeCorrect(double score) => score >= 70;
 }

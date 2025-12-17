@@ -17,23 +17,13 @@ class PronunciationResultPlaceholder extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Ready when you are',
+            'Nhấn Mic để bắt đầu luyện tập',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Nhấn Your Voice để bắt đầu luyện tập',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 }
-
-

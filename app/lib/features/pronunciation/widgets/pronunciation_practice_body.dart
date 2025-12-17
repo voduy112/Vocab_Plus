@@ -19,6 +19,7 @@ class PronunciationPracticeBody extends StatelessWidget {
   final bool isEvaluating;
   final bool showConfetti;
   final bool isLoadingAudio;
+  final bool isVoiceCoachBusy;
   final VoidCallback onVoiceCoach;
   final VoidCallback onRepeat;
   final VoidCallback onStartRecording;
@@ -38,6 +39,7 @@ class PronunciationPracticeBody extends StatelessWidget {
     required this.isEvaluating,
     required this.showConfetti,
     required this.isLoadingAudio,
+    required this.isVoiceCoachBusy,
     required this.onVoiceCoach,
     required this.onRepeat,
     required this.onStartRecording,
@@ -77,6 +79,7 @@ class PronunciationPracticeBody extends StatelessWidget {
                   isRecording: isRecording,
                   isEvaluating: isEvaluating,
                   isLoadingAudio: isLoadingAudio,
+                  isMicLocked: isVoiceCoachBusy,
                 ),
                 const SizedBox(height: 24),
                 if (hasResult)
