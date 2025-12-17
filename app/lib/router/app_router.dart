@@ -15,6 +15,7 @@ import '../../core/widgets/ai_chat_button.dart';
 import '../../core/models/deck.dart';
 import '../../core/models/vocabulary.dart';
 import '../../features/pronunciation/views/select_deck_screen.dart';
+import '../../features/pronunciation/views/voice_coach_loading_screen.dart';
 import '../../features/pronunciation/views/pronunciation_practice_screen.dart';
 import '../../core/widgets/animated_splash_screen.dart';
 
@@ -59,7 +60,7 @@ GoRouter createRouter(AuthController auth) {
                     },
                   ),
                 ),
-                const AiChatButton(),
+                // const AiChatButton(),
               ],
             ),
           );
@@ -125,6 +126,13 @@ GoRouter createRouter(AuthController auth) {
       GoRoute(
         path: '/pronunciation/select-deck',
         builder: (context, state) => const PronunciationSelectDeckScreen(),
+      ),
+      GoRoute(
+        path: '/pronunciation/voice-coach-loading',
+        builder: (context, state) {
+          final deck = state.extra as Deck;
+          return VoiceCoachLoadingScreen(deck: deck);
+        },
       ),
       GoRoute(
         path: '/pronunciation/practice',

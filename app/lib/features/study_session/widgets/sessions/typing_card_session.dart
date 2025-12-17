@@ -266,15 +266,15 @@ class _TypingCardSessionState extends State<TypingCardSession>
           ],
 
           // Ảnh mặt trước (nếu có)
-          if (widget.vocabulary.imageUrl != null ||
-              widget.vocabulary.imagePath != null)
+          if (widget.vocabulary.frontImageUrl != null ||
+              widget.vocabulary.frontImagePath != null)
             Container(
               margin: const EdgeInsets.only(bottom: 16),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: widget.vocabulary.imagePath != null
+                child: widget.vocabulary.frontImagePath != null
                     ? Image.file(
-                        File(widget.vocabulary.imagePath!),
+                        File(widget.vocabulary.frontImagePath!),
                         height: 120,
                         width: 200,
                         fit: BoxFit.cover,
@@ -288,7 +288,7 @@ class _TypingCardSessionState extends State<TypingCardSession>
                         },
                       )
                     : Image.network(
-                        widget.vocabulary.imageUrl!,
+                        widget.vocabulary.frontImageUrl!,
                         height: 120,
                         width: 200,
                         fit: BoxFit.cover,

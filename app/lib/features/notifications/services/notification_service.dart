@@ -139,7 +139,7 @@ class NotificationService {
 
         // Lấy từ vựng đến hạn trong deck này
         final dueVocabularies =
-            await _vocabularyRepository.getVocabulariesForStudy(deck.id!);
+            await _vocabularyRepository.getDueReviewVocabularies(deck.id!);
 
         if (dueVocabularies.isNotEmpty) {
           // Kiểm tra xem đã có thông báo cho deck này chưa (trong 1 giờ qua)

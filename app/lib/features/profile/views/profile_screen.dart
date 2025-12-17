@@ -4,578 +4,570 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/database/database_helper.dart';
-import '../../decks/services/deck_service.dart';
-import '../../decks/services/vocabulary_service.dart';
 import '../../../core/models/deck.dart';
-import '../../../core/models/vocabulary.dart';
+import '../../../core/services/sync_service.dart';
+import '../../decks/services/deck_service.dart';
+import '../../decks/services/deck_preload_cache.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
   @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthController>();
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Row(children: [
-            CircleAvatar(
-                radius: 36,
-                backgroundImage: auth.photoURL != null
-                    ? NetworkImage(auth.photoURL!)
-                    : null),
-            const SizedBox(width: 12),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(auth.displayName,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w800)),
-              Text(auth.isLoggedIn ? 'Logged in' : 'Guest'),
-            ])
-          ]),
-          const SizedBox(height: 16),
-          if (!auth.isLoggedIn)
-            FilledButton.icon(
-              icon: const Icon(Icons.login),
-              label: const Text('Đăng nhập Google'),
-              onPressed: () async {
-                await context.read<AuthController>().signInWithGoogle();
-                final api = ApiClient('http://10.0.2.2:5000');
-                await api.dio.post('/users/me/upsert'); // upsert hồ sơ
-                if (context.mounted)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã đăng nhập & upsert')));
-              },
-            )
-          else
-            OutlinedButton.icon(
-              icon: const Icon(Icons.logout),
-              label: const Text('Đăng xuất'),
-              onPressed: () => context.read<AuthController>().signOut(),
-            ),
-          const SizedBox(height: 24),
-          const ListTile(
-              leading: Icon(Icons.settings_outlined),
-              title: Text('Settings'),
-              trailing: Icon(Icons.chevron_right)),
-          const ListTile(
-              leading: Icon(Icons.notifications_none),
-              title: Text('Notifications'),
-              trailing: Icon(Icons.chevron_right)),
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
 
-          // Nút tạm thời để xóa database (chỉ dành cho development)
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text('Xóa Database (Dev Only)'),
-            subtitle: const Text('Xóa toàn bộ dữ liệu local'),
-            trailing: const Icon(Icons.warning, color: Colors.orange),
-            onTap: () => _showDeleteDatabaseDialog(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_circle, color: Colors.blue),
-            title: const Text('Tạo Dữ Liệu Mẫu (Dev Only)'),
-            subtitle: const Text('Tạo deck và từ vựng mẫu để test'),
-            trailing: const Icon(Icons.science, color: Colors.blue),
-            onTap: () => _createSampleData(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.refresh, color: Colors.green),
-            title: const Text('Test Database Migration (Dev Only)'),
-            subtitle: const Text('Kiểm tra migration database'),
-            trailing: const Icon(Icons.bug_report, color: Colors.green),
-            onTap: () => _testDatabaseMigration(context),
-          ),
-        ],
-      ),
-    );
-  }
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isSyncing = false;
+  String? _syncProgressMessage;
+  SyncStats? _lastSyncStats;
+  DateTime? _lastSyncTime;
+  String? _lastSyncMessage;
+  bool? _lastSyncSucceeded;
+  final SyncService _syncService = SyncService();
 
-  void _showDeleteDatabaseDialog(BuildContext context) {
-    showDialog(
+  Future<void> _resetDatabase() async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
+        final theme = Theme.of(context);
         return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Xóa Database'),
-            ],
-          ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Bạn có chắc chắn muốn xóa toàn bộ database?'),
-              SizedBox(height: 8),
-              Text(
-                'Hành động này sẽ:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text('• Xóa tất cả deck và từ vựng'),
-              Text('• Xóa lịch sử học tập'),
-              Text('• Không thể hoàn tác'),
-              SizedBox(height: 8),
-              Text(
-                'Chỉ sử dụng trong quá trình phát triển!',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          title: const Text('Xóa toàn bộ dữ liệu?'),
+          content: const Text(
+            'Thao tác này sẽ xóa toàn bộ từ vựng, deck và lịch sử học trong ứng dụng.\n\n'
+            'Bạn có chắc chắn muốn tiếp tục?',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Hủy'),
             ),
             FilledButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _deleteDatabase(context);
-              },
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
               ),
-              child: const Text('Xóa Database'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Xóa tất cả'),
             ),
           ],
         );
       },
     );
-  }
 
-  Future<void> _deleteDatabase(BuildContext context) async {
+    if (confirmed != true || !mounted) return;
+
     try {
-      // Hiển thị loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
+      final dbHelper = DatabaseHelper();
+      await dbHelper.deleteDatabase();
+
+      // Làm mới cache decks nếu có
+      DeckPreloadCache().clearCache();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã xóa toàn bộ dữ liệu.'),
         ),
       );
-
-      // Xóa database
-      await DatabaseHelper().deleteDatabase();
-
-      // Đóng loading dialog
-      if (context.mounted) Navigator.of(context).pop();
-
-      // Hiển thị thông báo thành công
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Database đã được xóa thành công!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
     } catch (e) {
-      // Đóng loading dialog nếu có lỗi
-      if (context.mounted) Navigator.of(context).pop();
-
-      // Hiển thị thông báo lỗi
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi xóa database: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi reset dữ liệu: $e'),
+        ),
+      );
     }
   }
 
-  Future<void> _createSampleData(BuildContext context) async {
+  Future<void> _createDefaultDeck() async {
     try {
-      // Hiển thị loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
+      // Đảm bảo database đã được khởi tạo (nếu trước đó đã xóa)
+      final dbHelper = DatabaseHelper();
+      await dbHelper.database;
+
+      final deckService = DeckService();
+      final now = DateTime.now();
+      await deckService.createDeck(
+        Deck(
+          name: 'Từ vựng của tôi',
+          createdAt: now,
+          updatedAt: now,
         ),
       );
 
-      // Import các service cần thiết
-      final deckService = DeckService();
-      final vocabularyService = VocabularyService();
+      // Làm mới cache decks nếu có
+      DeckPreloadCache().clearCache();
 
-      // Tạo deck mẫu
-      final deck = Deck(
-        name: 'Sample Vocabulary',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã tạo deck từ vựng mặc định.'),
+        ),
       );
-      final deskId = await deckService.createDeck(deck);
-
-      if (deskId > 0) {
-        // Tạo 20 từ mẫu, đa dạng cardType và field schema hiện tại
-        final now = DateTime.now();
-        final sampleVocabularies = <Vocabulary>[
-          // 1-8: Basis cards (có pronunciation/example/translation)
-          Vocabulary(
-            deskId: deskId,
-            front: 'beautiful',
-            back: 'đẹp; xinh đẹp',
-            frontExtra: {
-              'pronunciation': '/ˈbjuːtɪfəl/',
-              'example': 'She is a beautiful girl.',
-            },
-            backExtra: {'translation': 'Cô ấy là một cô gái xinh đẹp.'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'run',
-            back: 'chạy',
-            frontExtra: {
-              'pronunciation': '/rʌn/',
-              'example': 'I run every morning.',
-            },
-            backExtra: {'translation': 'Tôi chạy mỗi sáng.'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'quickly',
-            back: 'nhanh chóng',
-            frontExtra: {
-              'pronunciation': '/ˈkwɪkli/',
-              'example': 'He quickly finished his work.',
-            },
-            backExtra: {
-              'translation': 'Anh ấy nhanh chóng hoàn thành công việc.'
-            },
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'book',
-            back: 'quyển sách',
-            frontExtra: {
-              'pronunciation': '/bʊk/',
-              'example': 'This book is interesting.',
-            },
-            backExtra: {'translation': 'Cuốn sách này rất thú vị.'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'teacher',
-            back: 'giáo viên',
-            frontExtra: {
-              'pronunciation': '/ˈtiːtʃər/',
-              'example': 'My teacher is very helpful.',
-            },
-            backExtra: {'translation': 'Giáo viên của tôi rất nhiệt tình.'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'learn',
-            back: 'học',
-            frontExtra: {
-              'pronunciation': '/lɜːrn/',
-              'example': 'We learn English every day.',
-            },
-            backExtra: {'translation': 'Chúng tôi học tiếng Anh mỗi ngày.'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'difficult',
-            back: 'khó; khó khăn',
-            frontExtra: {
-              'pronunciation': '/ˈdɪfɪkəlt/',
-              'example': 'This task is difficult.',
-            },
-            backExtra: {'translation': 'Nhiệm vụ này khó.'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'example',
-            back: 'ví dụ',
-            frontExtra: {
-              'pronunciation': '/ɪɡˈzæmpəl/',
-              'example': 'For example, apples are fruits.',
-            },
-            backExtra: {'translation': 'Ví dụ, táo là trái cây.'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.basis,
-          ),
-
-          // 9-14: Reverse cards (đơn giản 2 mặt)
-          Vocabulary(
-            deskId: deskId,
-            front: 'cat',
-            back: 'con mèo',
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.reverse,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'dog',
-            back: 'con chó',
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.reverse,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'house',
-            back: 'ngôi nhà',
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.reverse,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'car',
-            back: 'xe hơi',
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.reverse,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'water',
-            back: 'nước',
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.reverse,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'food',
-            back: 'thức ăn',
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.reverse,
-          ),
-
-          // 15-20: Typing cards (có hint_text)
-          Vocabulary(
-            deskId: deskId,
-            front: 'hello',
-            back: 'xin chào',
-            backExtra: {'hint_text': 'Lời chào thân thiện'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.typing,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'goodbye',
-            back: 'tạm biệt',
-            backExtra: {'hint_text': 'Lời chào tạm biệt'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.typing,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'thank you',
-            back: 'cảm ơn',
-            backExtra: {'hint_text': 'Lời cảm ơn lịch sự'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.typing,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'please',
-            back: 'làm ơn',
-            backExtra: {'hint_text': 'Dùng khi nhờ vả'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.typing,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'sorry',
-            back: 'xin lỗi',
-            backExtra: {'hint_text': 'Xin lỗi khi mắc lỗi'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.typing,
-          ),
-          Vocabulary(
-            deskId: deskId,
-            front: 'welcome',
-            back: 'chào mừng',
-            backExtra: {'hint_text': 'Chào đón ai đó'},
-            createdAt: now,
-            updatedAt: now,
-            cardType: CardType.typing,
-          ),
-        ];
-
-        // Tạo từ vựng
-        for (final vocab in sampleVocabularies) {
-          await vocabularyService.createVocabulary(vocab);
-        }
-      }
-
-      // Đóng loading dialog
-      if (context.mounted) Navigator.of(context).pop();
-
-      // Hiển thị thông báo thành công
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã tạo dữ liệu mẫu thành công!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
     } catch (e) {
-      // Đóng loading dialog nếu có lỗi
-      if (context.mounted) Navigator.of(context).pop();
-
-      // Hiển thị thông báo lỗi
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi tạo dữ liệu mẫu: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi tạo deck mặc định: $e'),
+        ),
+      );
     }
   }
 
-  Future<void> _testDatabaseMigration(BuildContext context) async {
+  Future<void> _signOut() async {
     try {
-      // Hiển thị loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
+      await context.read<AuthController>().signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã đăng xuất khỏi tài khoản.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi khi đăng xuất: $e')),
+      );
+    }
+  }
+
+  Future<void> _syncDataToCloud() async {
+    final auth = context.read<AuthController>();
+    if (!auth.isLoggedIn) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đăng nhập Google trước khi đồng bộ.'),
         ),
       );
+      return;
+    }
 
-      // Test tạo vocabulary với hintText và cardType
-      final deckService = DeckService();
+    setState(() {
+      _isSyncing = true;
+      _syncProgressMessage = 'Đang bắt đầu đồng bộ...';
+    });
 
-      // Tạo deck test
-      final testDesk = Deck(
-        name: 'Test Migration',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+    try {
+      const apiBaseUrl = String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://192.168.2.167:3000',
       );
-      final deskId = await deckService.createDeck(testDesk);
 
-      if (deskId > 0) {
-        // Test tạo vocabulary với hintText
-        final testVocab = Vocabulary(
-          deskId: deskId,
-          front: 'test',
-          back: 'kiểm tra',
-          backExtra: {
-            'hint': 'Gợi ý test migration',
-          },
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          cardType: CardType.typing,
-        );
+      // Clear cache trước khi sync
+      DeckPreloadCache().clearCache();
 
-        final vocabularyService = VocabularyService();
-        final vocabId = await vocabularyService.createVocabulary(testVocab);
+      // Sử dụng syncFull để đồng bộ hai chiều (tải về + upload lên)
+      final result = await _syncService.syncFull(
+        apiBaseUrl: apiBaseUrl,
+        onProgress: (message, progress) {
+          if (mounted) {
+            setState(() {
+              _syncProgressMessage = message;
+            });
+          }
+        },
+      );
 
-        if (vocabId > 0) {
-          // Test đọc lại vocabulary
-          final retrievedVocab =
-              await vocabularyService.getVocabularyById(vocabId);
+      if (!mounted) return;
 
-          if (retrievedVocab != null) {
-            // Kiểm tra các trường mới
-            final hasHintText = retrievedVocab.backExtra != null &&
-                retrievedVocab.backExtra!.containsKey('hint');
-            final hasCardType = retrievedVocab.cardType != CardType.basis;
+      final stats = result.stats;
+      final summaryMessage = stats != null
+          ? 'Đồng bộ hai chiều thành công!\n'
+              '• ${stats.decks} decks\n'
+              '• ${stats.vocabularies} từ vựng\n'
+              '• ${stats.vocabularySrs} SRS records\n'
+              '• ${stats.imagesUploaded} ảnh đã upload'
+          : result.message;
 
-            // Đóng loading dialog
-            if (context.mounted) Navigator.of(context).pop();
+      setState(() {
+        _isSyncing = false;
+        _syncProgressMessage = null;
+        _lastSyncStats = stats;
+        _lastSyncTime = DateTime.now();
+        _lastSyncMessage = summaryMessage;
+        _lastSyncSucceeded = result.success;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSyncing = false;
+        _syncProgressMessage = null;
+        _lastSyncStats = null;
+        _lastSyncTime = DateTime.now();
+        _lastSyncMessage = 'Lỗi khi đồng bộ: $e';
+        _lastSyncSucceeded = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi đồng bộ: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
+  }
 
-            // Hiển thị kết quả test
-            if (context.mounted) {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Kết Quả Test Migration'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('✅ Tạo vocabulary thành công: ID $vocabId'),
-                      Text('✅ HintText: ${hasHintText ? "Có" : "Không"}'),
-                      Text('✅ CardType: ${hasCardType ? "Có" : "Không"}'),
-                      if (hasHintText)
-                        Text(
-                            '   - HintText value: "${retrievedVocab.backExtra!['hint']}"'),
-                      if (hasCardType)
-                        Text('   - CardType value: ${retrievedVocab.cardType}'),
-                    ],
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ProfileTopBar(onBack: () => Navigator.of(context).maybePop()),
+              const SizedBox(height: 24),
+              _ProfileHeaderCard(
+                auth: auth,
+                onSignIn: () async {
+                  await context.read<AuthController>().signInWithGoogle();
+                  final api = ApiClient('http://192.168.2.167:3000');
+                  await api.dio.post('/users/me/upsert');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã đăng nhập & upsert'),
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 28),
+              if (context.watch<AuthController>().isLoggedIn)
+                _ProfileOptionTile(
+                  icon: Icons.sync,
+                  label: 'Đồng bộ',
+                  onTap: _isSyncing ? null : _syncDataToCloud,
+                  trailing: _isSyncing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
+                ),
+              if (context.watch<AuthController>().isLoggedIn &&
+                  _syncProgressMessage != null)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    _syncProgressMessage!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('OK'),
+                ),
+              if (_lastSyncMessage != null)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: _SyncStatusCard(
+                    message: _lastSyncMessage!,
+                    success: _lastSyncSucceeded ?? false,
+                    stats: _lastSyncStats,
+                    syncTime: _lastSyncTime,
+                  ),
+                ),
+              _ProfileOptionTile(
+                icon: Icons.delete_forever_outlined,
+                label: 'Xóa toàn bộ dữ liệu',
+                onTap: _resetDatabase,
+              ),
+              _ProfileOptionTile(
+                icon: Icons.inventory_2_outlined,
+                label: 'Tạo deck từ vựng mặc định',
+                onTap: _createDefaultDeck,
+              ),
+              if (auth.isLoggedIn)
+                _ProfileOptionTile(
+                  icon: Icons.logout,
+                  label: 'Đăng xuất',
+                  onTap: _signOut,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SyncStatusCard extends StatelessWidget {
+  final bool success;
+  final String message;
+  final SyncStats? stats;
+  final DateTime? syncTime;
+
+  const _SyncStatusCard({
+    required this.success,
+    required this.message,
+    required this.stats,
+    required this.syncTime,
+  });
+
+  String _formatTime(DateTime? time) {
+    if (time == null) return 'Thời gian không xác định';
+    final local = time.toLocal();
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    return '${twoDigits(local.hour)}:${twoDigits(local.minute)} '
+        '${twoDigits(local.day)}/${twoDigits(local.month)}/${local.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color =
+        success ? Colors.green : theme.colorScheme.error.withOpacity(0.9);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: color.withOpacity(0.08),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                success ? Icons.check_circle : Icons.error_outline,
+                color: color,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Lần cuối: ${_formatTime(syncTime)}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+          if (stats != null) ...[
+            const SizedBox(height: 8),
+            _StatRow(label: 'Decks', value: stats!.decks),
+            _StatRow(label: 'Từ vựng', value: stats!.vocabularies),
+            _StatRow(label: 'SRS records', value: stats!.vocabularySrs),
+            _StatRow(label: 'Phiên học', value: stats!.studySessions),
+            _StatRow(label: 'Ảnh upload', value: stats!.imagesUploaded),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  final String label;
+  final int value;
+
+  const _StatRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          Text(
+            value.toString(),
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileTopBar extends StatelessWidget {
+  final VoidCallback onBack;
+  const _ProfileTopBar({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _roundButton(
+          context,
+          icon: Icons.arrow_back,
+          onTap: onBack,
+        ),
+        Text(
+          'Profile',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 48), // Placeholder để giữ căn giữa
+      ],
+    );
+  }
+
+  Widget _roundButton(BuildContext context,
+      {required IconData icon, VoidCallback? onTap}) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, size: 20, color: theme.colorScheme.onSurface),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileHeaderCard extends StatelessWidget {
+  final AuthController auth;
+  final VoidCallback onSignIn;
+  const _ProfileHeaderCard({
+    required this.auth,
+    required this.onSignIn,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bool isLoggedIn = auth.isLoggedIn;
+    final String displayName = isLoggedIn &&
+            auth.displayName.trim().isNotEmpty &&
+            auth.displayName.toLowerCase() != 'guest'
+        ? auth.displayName
+        : 'Khách';
+    final String subtitle =
+        isLoggedIn && (auth.email != null && auth.email!.trim().isNotEmpty)
+            ? auth.email!.trim()
+            : 'Chưa đăng nhập';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundImage:
+                    auth.photoURL != null ? NetworkImage(auth.photoURL!) : null,
+                backgroundColor: Colors.yellow.shade400,
+                child: auth.photoURL == null
+                    ? const Icon(Icons.sentiment_satisfied_alt,
+                        size: 32, color: Colors.black87)
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
                     ),
                   ],
                 ),
-              );
-            }
-          } else {
-            throw Exception('Không thể đọc vocabulary sau khi tạo');
-          }
-        } else {
-          throw Exception('Không thể tạo vocabulary');
-        }
-      } else {
-        throw Exception('Không thể tạo desk');
-      }
-    } catch (e) {
-      // Đóng loading dialog nếu có lỗi
-      if (context.mounted) Navigator.of(context).pop();
-
-      // Hiển thị thông báo lỗi
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi test migration: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
+              ),
+            ],
           ),
-        );
-      }
-    }
+          if (!isLoggedIn) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.login, size: 18),
+                label: const Text('Đăng nhập Google'),
+                onPressed: onSignIn,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileOptionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  const _ProfileOptionTile({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListTile(
+      onTap: onTap,
+      enabled: onTap != null,
+      leading: Icon(icon, color: theme.colorScheme.primary),
+      title: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: trailing ?? const Icon(Icons.chevron_right),
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+    );
   }
 }

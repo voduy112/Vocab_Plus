@@ -63,14 +63,71 @@ class DeckRepository {
     );
   }
 
-  // Xóa deck vĩnh viễn (hard delete)
+  // Xóa deck vĩnh viễn (hard delete) - xóa tất cả dữ liệu liên quan
   Future<int> permanentlyDeleteDeck(int id) async {
     final db = await _databaseHelper.database;
-    return await db.delete(
-      'decks',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+
+    // Sử dụng transaction để đảm bảo tất cả dữ liệu được xóa hoặc không xóa gì cả
+    return await db.transaction((txn) async {
+      // 1. Xóa tất cả notifications liên quan đến deck
+      await txn.delete(
+        'notifications',
+        where: 'deck_id = ?',
+        whereArgs: [id],
+      );
+
+      // 2. Xóa tất cả study_sessions liên quan đến deck
+      await txn.delete(
+        'study_sessions',
+        where: 'deck_id = ?',
+        whereArgs: [id],
+      );
+
+      // 3. Lấy tất cả vocabulary IDs trong deck để xóa dữ liệu liên quan
+      final vocabIds = await txn.query(
+        'vocabularies',
+        columns: ['id'],
+        where: 'deck_id = ?',
+        whereArgs: [id],
+      );
+
+      if (vocabIds.isNotEmpty) {
+        final List<int> ids = vocabIds.map((map) => map['id'] as int).toList();
+        final placeholders = List.filled(ids.length, '?').join(',');
+
+        // 4. Xóa tất cả vocabulary_srs liên quan
+        await txn.rawDelete(
+          'DELETE FROM vocabulary_srs WHERE vocabulary_id IN ($placeholders)',
+          ids,
+        );
+
+        // 5. Xóa tất cả notifications liên quan đến vocabularies
+        await txn.rawDelete(
+          'DELETE FROM notifications WHERE vocabulary_id IN ($placeholders)',
+          ids,
+        );
+
+        // 6. Xóa tất cả study_sessions liên quan đến vocabularies
+        await txn.rawDelete(
+          'DELETE FROM study_sessions WHERE vocabulary_id IN ($placeholders)',
+          ids,
+        );
+
+        // 7. Xóa tất cả vocabularies trong deck
+        await txn.delete(
+          'vocabularies',
+          where: 'deck_id = ?',
+          whereArgs: [id],
+        );
+      }
+
+      // 8. Cuối cùng xóa deck
+      return await txn.delete(
+        'decks',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   // Tìm kiếm decks theo tên
@@ -115,28 +172,52 @@ class DeckRepository {
 
     // Số từ vựng mới
     final newVocabulariesResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM vocabularies WHERE deck_id = ? AND is_active = ? AND srs_type = 0',
+      '''
+      SELECT COUNT(*) as count 
+      FROM vocabularies v
+      JOIN vocabulary_srs s ON s.vocabulary_id = v.id
+      WHERE v.deck_id = ? AND v.is_active = ? AND s.srs_type = 0
+      ''',
       [deskId, 1],
     );
     final newVocabularies = Sqflite.firstIntValue(newVocabulariesResult) ?? 0;
 
     // Số từ đã học (mastery_level > 0)
     final learnedResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM vocabularies WHERE deck_id = ? AND mastery_level > 0 AND is_active = ?',
+      '''
+      SELECT COUNT(*) as count 
+      FROM vocabularies v
+      JOIN vocabulary_srs s ON s.vocabulary_id = v.id
+      WHERE v.deck_id = ? AND s.mastery_level > 0 AND v.is_active = ?
+      ''',
       [deskId, 1],
     );
     final learned = Sqflite.firstIntValue(learnedResult) ?? 0;
 
     // Số từ đã thành thạo (mastery_level >= 3)
     final masteredResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM vocabularies WHERE deck_id = ? AND mastery_level >= 3 AND is_active = ?',
+      '''
+      SELECT COUNT(*) as count 
+      FROM vocabularies v
+      JOIN vocabulary_srs s ON s.vocabulary_id = v.id
+      WHERE v.deck_id = ? AND s.mastery_level >= 3 AND v.is_active = ?
+      ''',
       [deskId, 1],
     );
     final mastered = Sqflite.firstIntValue(masteredResult) ?? 0;
 
     // Số từ tới hạn ôn (chỉ tính từ đã có lịch ôn tập)
     final reviewResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM vocabularies WHERE deck_id = ? AND is_active = 1 AND ((srs_due IS NOT NULL AND srs_due <= ?) OR (srs_due IS NULL AND next_review IS NOT NULL AND next_review <= ?))',
+      '''
+      SELECT COUNT(*) as count 
+      FROM vocabularies v
+      JOIN vocabulary_srs s ON s.vocabulary_id = v.id
+      WHERE v.deck_id = ? AND v.is_active = 1 
+        AND (
+              (s.srs_due IS NOT NULL AND s.srs_due <= ?)
+           OR (s.srs_due IS NULL AND s.next_review IS NOT NULL AND s.next_review <= ?)
+        )
+      ''',
       [
         deskId,
         DateTime.now().toIso8601String(),
@@ -147,7 +228,12 @@ class DeckRepository {
 
     // Mức độ thành thạo trung bình
     final avgMasteryResult = await db.rawQuery(
-      'SELECT AVG(mastery_level) as avg FROM vocabularies WHERE deck_id = ? AND is_active = ?',
+      '''
+      SELECT AVG(s.mastery_level) as avg 
+      FROM vocabularies v
+      JOIN vocabulary_srs s ON s.vocabulary_id = v.id
+      WHERE v.deck_id = ? AND v.is_active = ?
+      ''',
       [deskId, 1],
     );
     final avgMastery = avgMasteryResult.isNotEmpty

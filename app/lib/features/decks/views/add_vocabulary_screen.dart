@@ -15,6 +15,7 @@ import '../widgets/image_pick_section.dart';
 import '../widgets/vocabulary_form_card.dart';
 import '../widgets/app_bar_actions.dart';
 import '../widgets/preview_dialog.dart';
+import '../../../core/services/cloud_storage_service.dart';
 
 class AddVocabularyScreen extends StatefulWidget {
   final Deck deck;
@@ -44,6 +45,8 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   String? _backImageUrl;
   bool _pickForFront = true; // chọn mặt để thêm ảnh
   DynamicFormState? _dynamicState;
+  String? _originalFrontImageUrl;
+  String? _originalBackImageUrl;
 
   @override
   void initState() {
@@ -54,10 +57,12 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
       _frontController.text = vocab.front;
       _backController.text = vocab.back;
       _selectedCardType = vocab.cardType;
-      _frontImagePath = vocab.imagePath;
-      _frontImageUrl = vocab.imageUrl;
+      _frontImagePath = vocab.frontImagePath;
+      _frontImageUrl = vocab.frontImageUrl;
       _backImagePath = vocab.backImagePath;
       _backImageUrl = vocab.backImageUrl;
+      _originalFrontImageUrl = vocab.frontImageUrl;
+      _originalBackImageUrl = vocab.backImageUrl;
 
       // Initialize hint text controller
       if (vocab.backExtra != null &&
@@ -230,7 +235,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final now = DateTime.now();
+      final nowUtc = DateTime.now().toUtc();
 
       final vocabulary = Vocabulary(
         id: _isEditing ? widget.vocabulary!.id : null,
@@ -241,17 +246,18 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         reviewCount: _isEditing ? widget.vocabulary!.reviewCount : 0,
         lastReviewed: _isEditing ? widget.vocabulary!.lastReviewed : null,
         nextReview: _isEditing ? widget.vocabulary!.nextReview : null,
-        createdAt: _isEditing ? widget.vocabulary!.createdAt : now,
-        updatedAt: now,
+        createdAt: _isEditing ? widget.vocabulary!.createdAt : nowUtc,
+        updatedAt: nowUtc,
         cardType: _selectedCardType,
-        imageUrl: _frontImageUrl,
-        imagePath: _frontImagePath,
+        frontImageUrl: _frontImageUrl,
+        frontImagePath: _frontImagePath,
         backImageUrl: _backImageUrl,
         backImagePath: _backImagePath,
         frontExtra: _dynamicState?.frontValues,
         backExtra: _dynamicState?.backValues,
       );
       print('=== SAVING VOCABULARY ===');
+      print('Updated at: ${vocabulary.updatedAt}');
       print('Front image URL: $_frontImageUrl');
       print('Front image Path: $_frontImagePath');
       print('Back image URL: $_backImageUrl');
@@ -262,6 +268,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
 
       if (_isEditing) {
         await vocabRepo.updateVocabulary(vocabulary);
+        await _deleteReplacedImages(vocabulary);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -284,12 +291,12 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
             reviewCount: 0,
             lastReviewed: null,
             nextReview: null,
-            createdAt: now,
-            updatedAt: now,
+            createdAt: nowUtc,
+            updatedAt: nowUtc,
             isActive: true,
             cardType: CardType.reverse,
-            imageUrl: _backImageUrl,
-            imagePath: _backImagePath,
+            frontImageUrl: _backImageUrl,
+            frontImagePath: _backImagePath,
             backImageUrl: _frontImageUrl,
             backImagePath: _frontImagePath,
             frontExtra: _dynamicState?.backValues,
@@ -344,14 +351,14 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   }
 
   void _showPreviewDialog() {
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final tempVocab = Vocabulary(
       id: null,
       deskId: widget.deck.id!,
       front: _frontController.text.trim(),
       back: _backController.text.trim(),
-      imageUrl: _frontImageUrl,
-      imagePath: _frontImagePath,
+      frontImageUrl: _frontImageUrl,
+      frontImagePath: _frontImagePath,
       backImageUrl: _backImageUrl,
       backImagePath: _backImagePath,
       frontExtra: _dynamicState?.frontValues,
@@ -368,5 +375,26 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
       cardType: _selectedCardType,
       accent: accent,
     );
+  }
+
+  bool _isFirebaseUrl(String? url) {
+    if (url == null) return false;
+    return url.contains('firebasestorage.googleapis.com');
+  }
+
+  Future<void> _deleteReplacedImages(Vocabulary newVocab) async {
+    final storage = CloudStorageService();
+
+    if (_originalFrontImageUrl != null &&
+        _originalFrontImageUrl != newVocab.frontImageUrl &&
+        _isFirebaseUrl(_originalFrontImageUrl)) {
+      await storage.deleteByUrl(_originalFrontImageUrl!);
+    }
+
+    if (_originalBackImageUrl != null &&
+        _originalBackImageUrl != newVocab.backImageUrl &&
+        _isFirebaseUrl(_originalBackImageUrl)) {
+      await storage.deleteByUrl(_originalBackImageUrl!);
+    }
   }
 }

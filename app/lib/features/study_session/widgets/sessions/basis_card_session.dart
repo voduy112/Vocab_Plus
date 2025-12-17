@@ -134,7 +134,8 @@ class _BasisCardSessionState extends State<BasisCardSession>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.vocabulary.id != widget.vocabulary.id) {
       _resetToQuestion();
-    } else if (oldWidget.isParentShowingResult && !widget.isParentShowingResult) {
+    } else if (oldWidget.isParentShowingResult &&
+        !widget.isParentShowingResult) {
       // Parent đã reset về false, cần lật ngược lại với animation
       _flipBackToQuestion();
     }
@@ -204,15 +205,15 @@ class _BasisCardSessionState extends State<BasisCardSession>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Ảnh mặt trước (nếu có)
-          if (widget.vocabulary.imageUrl != null ||
-              widget.vocabulary.imagePath != null)
+          if (widget.vocabulary.frontImageUrl != null ||
+              widget.vocabulary.frontImagePath != null)
             Container(
               margin: const EdgeInsets.only(bottom: 16),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: widget.vocabulary.imagePath != null
+                child: widget.vocabulary.frontImagePath != null
                     ? Image.file(
-                        File(widget.vocabulary.imagePath!),
+                        File(widget.vocabulary.frontImagePath!),
                         height: 120,
                         width: 200,
                         fit: BoxFit.cover,
@@ -226,7 +227,7 @@ class _BasisCardSessionState extends State<BasisCardSession>
                         },
                       )
                     : Image.network(
-                        widget.vocabulary.imageUrl!,
+                        widget.vocabulary.frontImageUrl!,
                         height: 120,
                         width: 200,
                         fit: BoxFit.cover,

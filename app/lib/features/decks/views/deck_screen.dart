@@ -1,14 +1,15 @@
 // features/decks/deck_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/models/deck.dart';
 import '../../../core/widgets/search_field.dart';
-import '../services/deck_service.dart';
 import '../services/deck_preload_cache.dart';
 import 'deck_overview_screen.dart';
 import '../widgets/create_deck_dialog.dart';
 import '../widgets/featured_card.dart';
 import '../widgets/deck_table.dart';
 import '../widgets/deck_context_menu.dart';
+import '../controllers/deck_screen_controller.dart';
 
 class DecksScreen extends StatefulWidget {
   const DecksScreen({super.key});
@@ -19,161 +20,11 @@ class DecksScreen extends StatefulWidget {
 
 class _DecksScreenState extends State<DecksScreen>
     with AutomaticKeepAliveClientMixin {
-  final DeckService _deckService = DeckService();
-  final TextEditingController _searchController = TextEditingController();
-
-  List<Deck> _decks = [];
-  List<Deck> _filteredDecks = [];
-  Map<int, Map<String, dynamic>> _deckStats = {};
-  bool _isLoading = true;
-  bool _hasLoadedData = false;
-  bool _isSearchVisible = false;
-  String _searchQuery = '';
-  DeskSortOption _sortOption = DeskSortOption.nameAsc;
-
   @override
   bool get wantKeepAlive => true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadDecks();
-    _searchController.addListener(_onSearchChanged);
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadDecks({bool forceReload = false}) async {
-    if (_hasLoadedData && !forceReload) {
-      return;
-    }
-
-    // Kiểm tra cache từ splash screen
-    final deckPreloadCache = DeckPreloadCache();
-    if (!forceReload && deckPreloadCache.hasData) {
-      final cachedDecks = deckPreloadCache.getCachedDecks();
-      final cachedStats = deckPreloadCache.getCachedStats();
-
-      if (cachedDecks != null && cachedStats != null) {
-        setState(() {
-          _decks = cachedDecks;
-          _filteredDecks = cachedDecks;
-          _deckStats = cachedStats;
-          _isLoading = false;
-          _hasLoadedData = true;
-        });
-        _sortDecks();
-        return;
-      }
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      final decks = await _deckService.getAllDecks();
-      if (mounted) {
-        final Map<int, Map<String, dynamic>> statsMap = {};
-        for (final deck in decks) {
-          if (deck.id != null) {
-            try {
-              final stats = await _deckService.getDeckStats(deck.id!);
-              statsMap[deck.id!] = stats;
-            } catch (e) {
-              statsMap[deck.id!] = {
-                'total': 0,
-                'learned': 0,
-                'mastered': 0,
-                'needReview': 0,
-                'avgMastery': 0.0,
-                'progress': 0.0,
-              };
-            }
-          }
-        }
-
-        setState(() {
-          _decks = decks;
-          _filteredDecks = decks;
-          _deckStats = statsMap;
-          _isLoading = false;
-          _hasLoadedData = true;
-        });
-        _sortDecks();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading decks: $e')),
-        );
-      }
-    }
-  }
-
-  void _sortDecks() {
-    setState(() {
-      _filteredDecks.sort((a, b) {
-        // Ưu tiên deck yêu thích lên đầu
-        if (a.isFavorite && !b.isFavorite) return -1;
-        if (!a.isFavorite && b.isFavorite) return 1;
-
-        // Nếu cùng trạng thái favorite, sắp xếp theo sortOption
-        switch (_sortOption) {
-          case DeskSortOption.nameAsc:
-            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-          case DeskSortOption.nameDesc:
-            return b.name.toLowerCase().compareTo(a.name.toLowerCase());
-          case DeskSortOption.dateAsc:
-            return a.createdAt.compareTo(b.createdAt);
-          case DeskSortOption.dateDesc:
-            return b.createdAt.compareTo(a.createdAt);
-        }
-      });
-    });
-  }
-
-  void _toggleNameSort() {
-    setState(() {
-      if (_sortOption == DeskSortOption.nameAsc) {
-        _sortOption = DeskSortOption.nameDesc;
-      } else {
-        _sortOption = DeskSortOption.nameAsc;
-      }
-    });
-    _sortDecks();
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _isSearchVisible = !_isSearchVisible;
-      if (!_isSearchVisible) {
-        _searchController.clear();
-        _searchQuery = '';
-        _filteredDecks = _decks;
-        _sortDecks();
-      }
-    });
-  }
-
-  void _onSearchChanged() {
-    setState(() {
-      _searchQuery = _searchController.text;
-      if (_searchQuery.isEmpty) {
-        _filteredDecks = _decks;
-      } else {
-        _filteredDecks = _decks
-            .where((deck) =>
-                deck.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-            .toList();
-      }
-      _sortDecks();
-    });
-  }
-
-  Future<void> _createNewDeck() async {
+  Future<void> _createNewDeck(
+      BuildContext context, DeckScreenController controller) async {
     final result = await showModalBottomSheet<Deck?>(
       context: context,
       isScrollControlled: true,
@@ -183,203 +34,238 @@ class _DecksScreenState extends State<DecksScreen>
     if (result != null) {
       // Clear cache khi có deck mới
       DeckPreloadCache().clearCache();
-      await _loadDecks(forceReload: true);
+      await controller.loadDecks(forceReload: true);
     }
   }
 
   Widget _buildHeader() {
-    return Container(
-      key: const ValueKey('header'),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Consumer<DeckScreenController>(
+      builder: (context, controller, _) {
+        return Container(
+          key: const ValueKey('header'),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
             children: [
-              Text(
-                'DECKS',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (_filteredDecks.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[600],
-                        borderRadius: BorderRadius.circular(8),
+                  Text(
+                    'DECKS',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  Row(
+                    children: [
+                      if (controller.filteredDecks.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[600],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: InkWell(
+                            onTap: () => _createNewDeck(context, controller),
+                            borderRadius: BorderRadius.circular(8),
+                            child: const Icon(Icons.add,
+                                size: 20, color: Colors.white),
+                          ),
+                        ),
+                      if (controller.filteredDecks.isNotEmpty)
+                        const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: controller.isSearchVisible
+                              ? Colors.blue[100]
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: InkWell(
+                          onTap: () => controller.toggleSearch(),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Icon(
+                            controller.isSearchVisible
+                                ? Icons.close
+                                : Icons.search,
+                            size: 20,
+                            color: controller.isSearchVisible
+                                ? Colors.blue[600]
+                                : Colors.grey[600],
+                          ),
+                        ),
                       ),
-                      child: InkWell(
-                        onTap: _createNewDeck,
-                        borderRadius: BorderRadius.circular(8),
-                        child: const Icon(Icons.add,
-                            size: 20, color: Colors.white),
-                      ),
-                    ),
-                  if (_filteredDecks.isNotEmpty) const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _isSearchVisible
-                          ? Colors.blue[100]
-                          : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: InkWell(
-                      onTap: _toggleSearch,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Icon(
-                        _isSearchVisible ? Icons.close : Icons.search,
-                        size: 20,
-                        color: _isSearchVisible
-                            ? Colors.blue[600]
-                            : Colors.grey[600],
-                      ),
-                    ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildSearchOnlyView() {
-    return Container(
-      key: const ValueKey('search'),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: InkWell(
-                    onTap: _toggleSearch,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Icon(Icons.arrow_back, color: Colors.grey[700]),
+    return Consumer<DeckScreenController>(
+      builder: (context, controller, _) {
+        return Container(
+          key: const ValueKey('search'),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: InkWell(
+                        onTap: () => controller.toggleSearch(),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child:
+                              Icon(Icons.arrow_back, color: Colors.grey[700]),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 40,
-                    child: Search(
-                      controller: _searchController,
-                      hintText: 'Search decks...',
-                      autofocus: true,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: Search(
+                          controller: controller.searchController,
+                          hintText: 'Search decks...',
+                          autofocus: true,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                  ],
                 ),
-                const SizedBox(width: 16),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildFeaturedCards() {
-    int totalWords = 0;
-    int totalLearned = 0;
-    int totalDue = 0;
+    return Consumer<DeckScreenController>(
+      builder: (context, controller, _) {
+        int totalWords = 0;
+        int totalLearned = 0;
+        int totalDue = 0;
 
-    for (final deck in _decks) {
-      if (deck.id != null && _deckStats.containsKey(deck.id)) {
-        final stats = _deckStats[deck.id!]!;
-        totalWords += stats['total'] as int;
-        totalLearned += stats['learned'] as int;
-        totalDue += stats['needReview'] as int;
-      }
-    }
+        for (final deck in controller.decks) {
+          if (deck.id != null && controller.deckStats.containsKey(deck.id)) {
+            final stats = controller.deckStats[deck.id!]!;
+            totalWords += stats['total'] as int;
+            totalLearned += stats['learned'] as int;
+            totalDue += stats['needReview'] as int;
+          }
+        }
 
-    final totalNewWords = totalWords - totalLearned;
+        final totalNewWords = totalWords - totalLearned;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: FeaturedCard(
-        totalWords: totalWords,
-        totalLearned: totalLearned,
-        totalNewWords: totalNewWords,
-        totalDue: totalDue,
-      ),
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: FeaturedCard(
+            totalWords: totalWords,
+            totalLearned: totalLearned,
+            totalNewWords: totalNewWords,
+            totalDue: totalDue,
+          ),
+        );
+      },
     );
   }
 
   Widget _buildDeckTable() {
-    return DeckTable(
-      desks: _filteredDecks,
-      deskStats: _deckStats,
-      isLoading: _isLoading,
-      searchQuery: _searchQuery,
-      sortOption: _sortOption,
-      onNameSortToggle: _toggleNameSort,
-      onDeckTap: _navigateToDeckDetail,
-      onDeckLongPress: _showDeckContextMenu,
-      onCreateDeck: _filteredDecks.isEmpty ? _createNewDeck : null,
+    return Consumer<DeckScreenController>(
+      builder: (context, controller, _) {
+        return DeckTable(
+          desks: controller.filteredDecks,
+          deskStats: controller.deckStats,
+          isLoading: controller.isLoading,
+          searchQuery: controller.searchQuery,
+          sortOption: controller.sortOption,
+          onNameSortToggle: () => controller.toggleNameSort(),
+          onDeckTap: (deck) => _navigateToDeckDetail(context, controller, deck),
+          onDeckLongPress: (deck) =>
+              _showDeckContextMenu(context, controller, deck),
+          onCreateDeck: controller.filteredDecks.isEmpty
+              ? () => _createNewDeck(context, controller)
+              : null,
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.0, -1.0),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeInOut,
-                  )),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
+    return ChangeNotifierProvider(
+      create: (_) => DeckScreenController(),
+      child: Consumer<DeckScreenController>(
+        builder: (context, controller, _) {
+          return Scaffold(
+            body: SafeArea(
+              child: Column(
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.0, -1.0),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeInOut,
+                        )),
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: controller.isSearchVisible
+                        ? _buildSearchOnlyView()
+                        : _buildHeader(),
                   ),
-                );
-              },
-              child: _isSearchVisible ? _buildSearchOnlyView() : _buildHeader(),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => _loadDecks(forceReload: true),
-                child: ListView(
-                  children: [
-                    _buildFeaturedCards(),
-                    _buildDeckTable(),
-                    const SizedBox(height: 20),
-                  ],
-                ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: () => controller.loadDecks(forceReload: true),
+                      child: ListView(
+                        children: [
+                          _buildFeaturedCards(),
+                          _buildDeckTable(),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  void _navigateToDeckDetail(Deck deck) async {
+  void _navigateToDeckDetail(
+      BuildContext context, DeckScreenController controller, Deck deck) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) {
-          final stats = (deck.id != null) ? _deckStats[deck.id!] : null;
+          final stats =
+              (deck.id != null) ? controller.deckStats[deck.id!] : null;
           final int? initialNewCount = (stats != null)
               ? ((stats['total'] as int? ?? 0) -
                   (stats['learned'] as int? ?? 0))
@@ -394,21 +280,23 @@ class _DecksScreenState extends State<DecksScreen>
     );
 
     // Refresh danh sách khi quay lại để cập nhật trạng thái favorite
-    await _loadDecks(forceReload: true);
+    await controller.loadDecks(forceReload: true);
   }
 
-  void _showDeckContextMenu(Deck deck) {
+  void _showDeckContextMenu(
+      BuildContext context, DeckScreenController controller, Deck deck) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => DeckContextMenu(
         deck: deck,
-        onDelete: () => _deleteDeck(deck),
+        onDelete: () => _deleteDeck(context, controller, deck),
       ),
     );
   }
 
-  Future<void> _deleteDeck(Deck deck) async {
+  Future<void> _deleteDeck(
+      BuildContext context, DeckScreenController controller, Deck deck) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -446,12 +334,9 @@ class _DecksScreenState extends State<DecksScreen>
 
     if (confirmed == true) {
       try {
-        await _deckService.deleteDeck(deck.id!);
-        // Clear cache khi xóa deck
-        DeckPreloadCache().clearCache();
-        await _loadDecks(forceReload: true);
+        await controller.deleteDeck(deck);
 
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -467,7 +352,7 @@ class _DecksScreenState extends State<DecksScreen>
           );
         }
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(

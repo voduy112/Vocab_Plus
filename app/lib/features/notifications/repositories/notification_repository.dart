@@ -27,7 +27,8 @@ class NotificationRepository {
       whereArgs.add(0);
     }
 
-    String query = 'SELECT * FROM notifications WHERE $whereClause ORDER BY time DESC';
+    String query =
+        'SELECT * FROM notifications WHERE $whereClause ORDER BY time DESC';
     if (limit != null) {
       query += ' LIMIT $limit';
     }
@@ -65,15 +66,6 @@ class NotificationRepository {
     );
   }
 
-  // Đánh dấu tất cả thông báo đã đọc
-  Future<int> markAllAsRead() async {
-    final db = await _databaseHelper.database;
-    return await db.update(
-      'notifications',
-      {'is_read': 1},
-    );
-  }
-
   // Xóa thông báo
   Future<int> deleteNotification(int id) async {
     final db = await _databaseHelper.database;
@@ -81,16 +73,6 @@ class NotificationRepository {
       'notifications',
       where: 'id = ?',
       whereArgs: [id],
-    );
-  }
-
-  // Xóa tất cả thông báo đã đọc
-  Future<int> deleteAllRead() async {
-    final db = await _databaseHelper.database;
-    return await db.delete(
-      'notifications',
-      where: 'is_read = ?',
-      whereArgs: [1],
     );
   }
 
@@ -114,13 +96,3 @@ class NotificationRepository {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-

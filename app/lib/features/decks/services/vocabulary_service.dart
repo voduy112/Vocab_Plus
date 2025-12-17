@@ -18,6 +18,9 @@ class VocabularyService extends ChangeNotifier {
       _vocabularyRepository.deleteVocabulary(id);
   Future<List<Vocabulary>> getVocabulariesForStudyByDeck(int deckId) =>
       _vocabularyRepository.getVocabulariesForStudy(deckId);
+  Future<List<Vocabulary>> getDueReviewVocabulariesByDeck(int deckId,
+          {int? limit}) =>
+      _vocabularyRepository.getDueReviewVocabularies(deckId, limit: limit);
   Future<int> updateMasteryLevel(int vocabularyId, int newMasteryLevel,
           {DateTime? nextReview}) =>
       _vocabularyRepository.updateMasteryLevel(vocabularyId, newMasteryLevel,
@@ -47,6 +50,9 @@ class VocabularyService extends ChangeNotifier {
   @deprecated
   Future<List<Vocabulary>> getVocabulariesForStudy(int deskId) =>
       getVocabulariesForStudyByDeck(deskId);
+  @deprecated
+  Future<List<Vocabulary>> getDueReviewVocabularies(int deskId, {int? limit}) =>
+      getDueReviewVocabulariesByDeck(deskId, limit: limit);
   @deprecated
   Future<int> countMinuteLearningByDesk(int deskId) =>
       countMinuteLearningByDeck(deskId);

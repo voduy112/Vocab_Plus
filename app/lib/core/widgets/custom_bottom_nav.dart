@@ -67,9 +67,8 @@ class _CustomBottomNavState extends State<CustomBottomNav>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildNavItem(0, Icons.library_books_outlined, Icons.library_books,
-                'Library'),
-            _buildNavItem(1, Icons.folder_outlined, Icons.folder, 'Desks'),
+            _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
+            _buildNavItem(1, Icons.folder_outlined, Icons.folder, 'Decks'),
             _buildNavItem(2, Icons.search_outlined, Icons.search, 'Search'),
             _buildNavItem(3, Icons.person_outline, Icons.person, 'Profile'),
           ],

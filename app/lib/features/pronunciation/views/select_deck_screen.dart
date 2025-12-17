@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'history_tab.dart';
 import '../../../core/models/deck.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/auth/auth_controller.dart';
 import '../../decks/services/deck_preload_cache.dart';
 import '../../decks/services/deck_service.dart';
 import '../../decks/services/vocabulary_service.dart';
@@ -128,7 +130,47 @@ class _PronunciationSelectDeckScreenState
   }
 
   /// Xử lý khi chọn deck
-  void _handleDeckTap(Deck deck) {
+  Future<void> _handleDeckTap(Deck deck) async {
+    final auth = context.read<AuthController>();
+
+    // Kiểm tra đăng nhập trước khi vào practice screen
+    if (!auth.isLoggedIn) {
+      if (!mounted) return;
+
+      // Hiển thị dialog thay vì SnackBar
+      final shouldNavigate = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Yêu cầu đăng nhập'),
+          content: const Text(
+            'Vui lòng đăng nhập để sử dụng chức năng đánh giá phát âm',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Đăng nhập'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldNavigate == true && mounted) {
+        // Pop về root trước (nếu đang ở trong một screen khác)
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        // Dùng Future.microtask để đảm bảo navigation sau khi pop xong
+        Future.microtask(() {
+          if (mounted) {
+            context.go('/tabs/profile');
+          }
+        });
+      }
+      return;
+    }
+
     // Navigate đến practice screen ngay
     context.push('/pronunciation/practice', extra: deck);
 

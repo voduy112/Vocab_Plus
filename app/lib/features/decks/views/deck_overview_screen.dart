@@ -33,6 +33,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   // ignore: unused_field
   bool _isLoading = false;
   late Deck _currentDeck;
+  Key _heatmapKey = UniqueKey();
 
   // Learning metrics
   int _dailyAverage = 0;
@@ -115,6 +116,14 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
         builder: (_) => StudySessionScreen(deck: _currentDeck),
       ),
     );
+    if (_currentDeck.id != null) {
+      DueHeatMap.invalidateCacheForDeck(_currentDeck.id);
+    }
+    if (mounted) {
+      setState(() {
+        _heatmapKey = UniqueKey();
+      });
+    }
     await _loadData();
   }
 
@@ -309,6 +318,7 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
 
   Widget _buildHeatmap(DateTime start, DateTime end) {
     return DueHeatMap(
+      key: _heatmapKey,
       start: start,
       end: end,
       deckId: widget.deck.id,

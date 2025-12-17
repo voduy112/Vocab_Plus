@@ -27,15 +27,25 @@ class VoiceCoachService {
   /// 1. Tải từ API nếu có endpoint (ưu tiên)
   /// 2. Sử dụng TTS để tạo audio (fallback)
   /// Trả về đường dẫn file audio đã lưu, hoặc null nếu lỗi
-  Future<String?> loadVoiceCoachAudio(Vocabulary vocabulary) async {
+  Future<String?> loadVoiceCoachAudio(
+    Vocabulary vocabulary, {
+    bool forceRefresh = false,
+  }) async {
     try {
       // Kiểm tra cache
-      if (vocabulary.id != null &&
+      if (!forceRefresh &&
+          vocabulary.id != null &&
           _cachedAudioPaths.containsKey(vocabulary.id)) {
         final cachedPath = _cachedAudioPaths[vocabulary.id!];
         if (cachedPath != null && await File(cachedPath).exists()) {
-          debugPrint('[VoiceCoach] Using cached audio for ${vocabulary.front}');
-          return cachedPath;
+          final isStale = await _isCacheStale(vocabulary, cachedPath);
+          if (!isStale) {
+            debugPrint(
+                '[VoiceCoach] Using cached audio for ${vocabulary.front}');
+            return cachedPath;
+          } else {
+            await _clearCachedFile(vocabulary.id!, cachedPath);
+          }
         }
       }
 
@@ -184,7 +194,11 @@ class VoiceCoachService {
     if (_cachedAudioPaths.containsKey(vocabulary.id)) {
       final cachedPath = _cachedAudioPaths[vocabulary.id!];
       if (cachedPath != null && await File(cachedPath).exists()) {
-        return cachedPath;
+        if (await _isCacheStale(vocabulary, cachedPath)) {
+          await _clearCachedFile(vocabulary.id!, cachedPath);
+        } else {
+          return cachedPath;
+        }
       }
     }
 
@@ -194,13 +208,21 @@ class VoiceCoachService {
     final audioPathWav = '${voiceCoachDir.path}/vocab_${vocabulary.id}.wav';
 
     if (await File(audioPathMp3).exists()) {
-      _cachedAudioPaths[vocabulary.id!] = audioPathMp3;
-      return audioPathMp3;
+      if (await _isCacheStale(vocabulary, audioPathMp3)) {
+        await File(audioPathMp3).delete();
+      } else {
+        _cachedAudioPaths[vocabulary.id!] = audioPathMp3;
+        return audioPathMp3;
+      }
     }
 
     if (await File(audioPathWav).exists()) {
-      _cachedAudioPaths[vocabulary.id!] = audioPathWav;
-      return audioPathWav;
+      if (await _isCacheStale(vocabulary, audioPathWav)) {
+        await File(audioPathWav).delete();
+      } else {
+        _cachedAudioPaths[vocabulary.id!] = audioPathWav;
+        return audioPathWav;
+      }
     }
 
     return null;
@@ -225,6 +247,37 @@ class VoiceCoachService {
       debugPrint('[VoiceCoach] Cache cleared at: ${voiceCoachDir.path}');
     } catch (e) {
       debugPrint('[VoiceCoach] Error clearing cache: $e');
+    }
+  }
+
+  Future<bool> _isCacheStale(Vocabulary vocabulary, String path) async {
+    try {
+      final file = File(path);
+      if (!await file.exists()) return true;
+      final stat = await file.stat();
+      // Nếu updatedAt mới hơn thời điểm tải file -> cache đã cũ
+      if (vocabulary.updatedAt.isAfter(stat.modified)) {
+        debugPrint(
+            '[VoiceCoach] Cached audio stale for ${vocabulary.front}, deleting...');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('[VoiceCoach] Failed to inspect cache file: $e');
+      return true;
+    }
+  }
+
+  Future<void> _clearCachedFile(int vocabId, String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      debugPrint('[VoiceCoach] Failed to delete cache file $path: $e');
+    } finally {
+      _cachedAudioPaths.remove(vocabId);
     }
   }
 }

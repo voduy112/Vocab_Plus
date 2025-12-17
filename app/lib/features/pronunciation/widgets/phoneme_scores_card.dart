@@ -20,11 +20,6 @@ class PhonemeScoresCard extends StatelessWidget {
       return _emptyCard(context);
     }
 
-    final targetIndex =
-        currentExerciseIndex.clamp(0, result.words.length - 1).toInt();
-    final phonemes =
-        result.phonemes.where((p) => p.wordIndex == targetIndex).toList();
-
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -40,27 +35,7 @@ class PhonemeScoresCard extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 12),
-            phonemes.isEmpty
-                ? Text(
-                    'Không có dữ liệu phoneme cho từ này.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  )
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (int i = 0; i < phonemes.length; i++) ...[
-                          PronunciationPhonemeChip(
-                            phoneme: phonemes[i],
-                            isCorrect: isPhonemeCorrect(phonemes[i].score),
-                            wasPronounced: phonemes[i].score > 0,
-                          ),
-                          if (i != phonemes.length - 1)
-                            const SizedBox(width: 6),
-                        ],
-                      ],
-                    ),
-                  ),
+            ..._buildWordPhonemeRows(context),
           ],
         ),
       ),
@@ -80,47 +55,126 @@ class PhonemeScoresCard extends StatelessWidget {
       ),
     );
   }
-}
 
-class PronunciationPhonemeChip extends StatelessWidget {
-  final PhonemeResult phoneme;
-  final bool isCorrect;
-  final bool wasPronounced;
+  /// Xây từng dòng: \"từ vựng\" + phoneme tương ứng
+  List<Widget> _buildWordPhonemeRows(BuildContext context) {
+    final List<Widget> rows = [];
+    final words = result.words;
+    final phonemes = result.phonemes;
 
-  const PronunciationPhonemeChip({
-    super.key,
-    required this.phoneme,
-    required this.isCorrect,
-    required this.wasPronounced,
-  });
+    for (int wi = 0; wi < words.length; wi++) {
+      final word = words[wi];
+      final wordPhonemes = phonemes.where((p) => p.wordIndex == wi).toList();
+      if (wordPhonemes.isEmpty) continue;
 
-  Color get _backgroundColor {
-    if (!wasPronounced) return Colors.grey.shade400;
-    if (isCorrect) return const Color(0xFF2DB098);
-    return const Color(0xFFE8515B);
-  }
+      final isCurrent = wi == currentExerciseIndex;
 
-  Color get _textColor {
-    if (!wasPronounced) return Colors.grey.shade900;
-    return Colors.white;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: _backgroundColor,
-      ),
-      child: Text(
-        phoneme.p,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: _textColor,
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(top: rows.isEmpty ? 0 : 10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                word.text,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                      color: isCurrent
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey[800],
+                    ),
+              ),
+              const SizedBox(height: 6),
+              _buildPhonemeString(context, wordPhonemes),
+            ],
+          ),
         ),
+      );
+    }
+
+    if (rows.isEmpty) {
+      rows.add(
+        Text(
+          'Không có dữ liệu phoneme cho từ này.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
+
+    return rows;
+  }
+
+  /// Hiển thị phoneme dưới dạng chuỗi ký tự liên tục
+  Widget _buildPhonemeString(
+      BuildContext context, List<PhonemeResult> wordPhonemes) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (int i = 0; i < wordPhonemes.length; i++) ...[
+            _buildPhonemeWithUnderline(wordPhonemes[i]),
+            if (i != wordPhonemes.length - 1) const SizedBox(width: 4),
+          ],
+        ],
       ),
     );
+  }
+
+  /// Xây dựng widget phoneme với gạch chân cách xa chữ
+  Widget _buildPhonemeWithUnderline(PhonemeResult phoneme) {
+    final wasPronounced = phoneme.score > 0;
+
+    Color textColor;
+    Color underlineColor;
+
+    if (!wasPronounced) {
+      // Phoneme không được nói: màu đỏ với gạch chân đỏ
+      textColor = Colors.red;
+      underlineColor = Colors.red;
+    } else {
+      // Phoneme đúng: màu xanh với gạch chân xanh
+      textColor = Colors.green;
+      underlineColor = Colors.green;
+    }
+
+    return Stack(
+      alignment: Alignment.bottomLeft,
+      children: [
+        Text(
+          phoneme.p,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        Positioned(
+          bottom: -3,
+          left: 0,
+          child: Container(
+            height: 2.5,
+            width: _getTextWidth(phoneme.p, 18, FontWeight.w600),
+            color: underlineColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tính toán chiều rộng của text
+  double _getTextWidth(String text, double fontSize, FontWeight fontWeight) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    return textPainter.width;
   }
 }

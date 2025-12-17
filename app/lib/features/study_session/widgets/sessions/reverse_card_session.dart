@@ -197,19 +197,19 @@ class _ReverseCardSessionState extends State<ReverseCardSession>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (widget.vocabulary.imagePath != null ||
-                widget.vocabulary.imageUrl != null) ...[
+            if (widget.vocabulary.frontImagePath != null ||
+                widget.vocabulary.frontImageUrl != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: widget.vocabulary.imagePath != null
+                child: widget.vocabulary.frontImagePath != null
                     ? Image.file(
-                        File(widget.vocabulary.imagePath!),
+                        File(widget.vocabulary.frontImagePath!),
                         height: 160,
                         width: double.infinity,
                         fit: BoxFit.cover,
                       )
                     : Image.network(
-                        widget.vocabulary.imageUrl!,
+                        widget.vocabulary.frontImageUrl!,
                         height: 160,
                         width: double.infinity,
                         fit: BoxFit.cover,

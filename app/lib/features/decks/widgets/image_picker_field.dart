@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/auth/auth_controller.dart';
 
 class VocabularyImagePicker extends StatefulWidget {
   final String title;
@@ -28,6 +31,7 @@ class VocabularyImagePicker extends StatefulWidget {
 class _VocabularyImagePickerState extends State<VocabularyImagePicker> {
   String? _imageUrl;
   String? _imagePath;
+  bool _downloading = false;
 
   @override
   void initState() {
@@ -70,7 +74,7 @@ class _VocabularyImagePickerState extends State<VocabularyImagePicker> {
           ],
         ),
         const SizedBox(height: 12),
-        if (_imagePath != null || _imageUrl != null)
+        if (_imagePath != null || _imageUrl != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: _imagePath != null
@@ -84,6 +88,26 @@ class _VocabularyImagePickerState extends State<VocabularyImagePicker> {
                     height: 160,
                     fit: BoxFit.cover,
                   ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (_imageUrl != null && _imagePath == null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _downloading ? null : _downloadCurrentImage,
+              icon: _downloading
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.download),
+              label: Text(_downloading ? 'Đang tải...' : 'Tải ảnh'),
+            ),
           ),
       ],
     );
@@ -106,6 +130,47 @@ class _VocabularyImagePickerState extends State<VocabularyImagePicker> {
   }
 
   Future<void> _openPixabaySearch() async {
+    final auth = context.read<AuthController>();
+
+    // Kiểm tra đăng nhập trước khi mở Pixabay search
+    if (!auth.isLoggedIn) {
+      if (!mounted) return;
+
+      // Hiển thị dialog thay vì SnackBar để đảm bảo navigation hoạt động
+      final shouldNavigate = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Yêu cầu đăng nhập'),
+          content: const Text(
+            'Vui lòng đăng nhập để sử dụng chức năng tìm ảnh từ Pixabay',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Đăng nhập'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldNavigate == true && mounted) {
+        // Pop về root trước (nếu đang ở trong một screen khác)
+        // Sau đó navigate đến profile tab
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        // Dùng Future.microtask để đảm bảo navigation sau khi pop xong
+        Future.microtask(() {
+          if (mounted) {
+            context.go('/tabs/profile');
+          }
+        });
+      }
+      return;
+    }
+
     final result = await showModalBottomSheet<Map<String, String>>(
       context: context,
       isScrollControlled: true,
@@ -118,6 +183,44 @@ class _VocabularyImagePickerState extends State<VocabularyImagePicker> {
         _imagePath = result['path'];
       });
       widget.onChanged(_imageUrl, _imagePath);
+    }
+  }
+
+  Future<void> _downloadCurrentImage() async {
+    if (_imageUrl == null || _downloading) return;
+    setState(() => _downloading = true);
+    final url = _imageUrl!;
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final uri = Uri.parse(url);
+      final ext =
+          p.extension(uri.path).isNotEmpty ? p.extension(uri.path) : '.jpg';
+      final fileName = 'pixabay_${DateTime.now().millisecondsSinceEpoch}$ext';
+      final savePath = p.join(directory.path, fileName);
+      await Dio().download(url, savePath);
+      if (!mounted) return;
+      setState(() {
+        _imagePath = savePath;
+      });
+      widget.onChanged(_imageUrl, _imagePath);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã tải ảnh xuống thiết bị'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể tải ảnh. Vui lòng thử lại.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _downloading = false);
+      }
     }
   }
 }
