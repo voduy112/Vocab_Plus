@@ -6,8 +6,8 @@ class Vocabulary {
   final String front;
   final String back;
   // Image fields
-  final String? imageUrl; // remote url (e.g., Pixabay)
-  final String? imagePath; // local cached file path
+  final String? frontImageUrl; // remote url (e.g., Pixabay)
+  final String? frontImagePath; // local cached file path
   // Back side images (optional). For backward compatibility, front side uses imageUrl/imagePath
   final String? backImageUrl;
   final String? backImagePath;
@@ -38,8 +38,8 @@ class Vocabulary {
     required this.deskId,
     required this.front,
     required this.back,
-    this.imageUrl,
-    this.imagePath,
+    this.frontImageUrl,
+    this.frontImagePath,
     this.backImageUrl,
     this.backImagePath,
     this.frontExtra,
@@ -74,8 +74,8 @@ class Vocabulary {
       deskId: map['deck_id'],
       front: map['front'],
       back: map['back'],
-      imageUrl: map['image_url'],
-      imagePath: map['image_path'],
+      frontImageUrl: map['front_image_url'],
+      frontImagePath: map['front_image_path'],
       backImageUrl: map['back_image_url'],
       backImagePath: map['back_image_path'],
       frontExtra: map['front_extra_json'] != null &&
@@ -126,8 +126,8 @@ class Vocabulary {
       'deck_id': deskId,
       'front': front,
       'back': back,
-      'image_url': imageUrl,
-      'image_path': imagePath,
+      'front_image_url': frontImageUrl,
+      'front_image_path': frontImagePath,
       'back_image_url': backImageUrl,
       'back_image_path': backImagePath,
       'front_extra_json': frontExtra == null
@@ -160,8 +160,8 @@ class Vocabulary {
     int? deskId,
     String? front,
     String? back,
-    String? imageUrl,
-    String? imagePath,
+    String? frontImageUrl,
+    String? frontImagePath,
     String? backImageUrl,
     String? backImagePath,
     Map<String, String>? frontExtra,
@@ -188,8 +188,8 @@ class Vocabulary {
       deskId: deskId ?? this.deskId,
       front: front ?? this.front,
       back: back ?? this.back,
-      imageUrl: imageUrl ?? this.imageUrl,
-      imagePath: imagePath ?? this.imagePath,
+      frontImageUrl: frontImageUrl ?? this.frontImageUrl,
+      frontImagePath: frontImagePath ?? this.frontImagePath,
       backImageUrl: backImageUrl ?? this.backImageUrl,
       backImagePath: backImagePath ?? this.backImagePath,
       frontExtra: frontExtra ?? this.frontExtra,
