@@ -18,7 +18,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'vocab_plus.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -30,7 +30,6 @@ class DatabaseHelper {
       CREATE TABLE decks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        color TEXT DEFAULT '#2196F3',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         is_active INTEGER DEFAULT 1,
@@ -38,20 +37,33 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tạo bảng vocabularies
+    // Tạo bảng vocabularies (thông tin từ vựng cơ bản, KHÔNG chứa trạng thái SRS)
     await db.execute('''
       CREATE TABLE vocabularies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         deck_id INTEGER NOT NULL,
         front TEXT NOT NULL,
         back TEXT NOT NULL,
-        image_url TEXT,
-        image_path TEXT,
+        front_image_url TEXT,
+        front_image_path TEXT,
         back_image_url TEXT,
         back_image_path TEXT,
         front_extra_json TEXT,
         back_extra_json TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        card_type TEXT DEFAULT 'basis',
+        FOREIGN KEY (deck_id) REFERENCES decks (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Tạo bảng vocabulary_srs chứa toàn bộ trạng thái SRS cho từng vocabulary
+    await db.execute('''
+      CREATE TABLE vocabulary_srs (
+        vocabulary_id INTEGER PRIMARY KEY,
         mastery_level INTEGER DEFAULT 0,
+        review_count INTEGER DEFAULT 0,
         last_reviewed TEXT,
         next_review TEXT,
         -- SRS fields (SM-2)
@@ -64,11 +76,7 @@ class DatabaseHelper {
         srs_queue INTEGER DEFAULT 0, -- 0=new, 1=learning, 2=review
         srs_lapses INTEGER DEFAULT 0,
         srs_left INTEGER DEFAULT 0,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        is_active INTEGER DEFAULT 1,
-        card_type TEXT DEFAULT 'basis',
-        FOREIGN KEY (deck_id) REFERENCES decks (id) ON DELETE CASCADE
+        FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id) ON DELETE CASCADE
       )
     ''');
 
@@ -87,13 +95,16 @@ class DatabaseHelper {
       )
     ''');
 
+    // Tạo bảng pronunciation_session_history để lưu lịch sử phiên luyện phát âm
+    await _createPronunciationSessionHistoryTable(db);
+
     // Tạo indexes để tối ưu hiệu suất
     await db.execute(
         'CREATE INDEX idx_vocabularies_deck_id ON vocabularies(deck_id)');
     await db.execute(
-        'CREATE INDEX idx_vocabularies_next_review ON vocabularies(next_review)');
+        'CREATE INDEX idx_vocabulary_srs_next_review ON vocabulary_srs(next_review)');
     await db.execute(
-        'CREATE INDEX idx_vocabularies_srs_due ON vocabularies(srs_due)');
+        'CREATE INDEX idx_vocabulary_srs_srs_due ON vocabulary_srs(srs_due)');
     await db.execute(
         'CREATE INDEX idx_study_sessions_deck_id ON study_sessions(deck_id)');
     await db.execute(
@@ -165,6 +176,33 @@ class DatabaseHelper {
         print('Column is_favorite might already exist: $e');
       }
     }
+    if (oldVersion < 4) {
+      await _createPronunciationSessionHistoryTable(db);
+    }
+  }
+
+  Future<void> _createPronunciationSessionHistoryTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pronunciation_session_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        deck_id INTEGER,
+        deck_name TEXT NOT NULL,
+        total_words INTEGER NOT NULL,
+        practiced_words INTEGER NOT NULL,
+        avg_overall REAL NOT NULL,
+        avg_accuracy REAL NOT NULL,
+        avg_fluency REAL NOT NULL,
+        avg_completeness REAL NOT NULL,
+        high_count INTEGER NOT NULL,
+        low_count INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (deck_id) REFERENCES decks (id) ON DELETE SET NULL
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pron_sess_created_at ON pronunciation_session_history(created_at DESC)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pron_sess_deck_id ON pronunciation_session_history(deck_id)');
   }
 
   // Đóng database
