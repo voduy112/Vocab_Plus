@@ -95,49 +95,6 @@ _PHONEMIZER_BACKEND = os.getenv("PHONEMIZER_BACKEND", "espeak")
 _PHONEMIZER_SEPARATOR = Separator(phone=" ", syllable="", word="")
 logger.info("All models (ASR phoneme + G2P + phonemizer) loaded successfully")
 
-# ----------------- ARPAbet → IPA mapping -----------------
-ARPABET_TO_IPA_BASE = {
-    "B": "b",
-    "P": "p",
-    "T": "t",
-    "D": "d",
-    "K": "k",
-    "G": "ɡ",
-    "F": "f",
-    "V": "v",
-    "TH": "θ",
-    "DH": "ð",
-    "S": "s",
-    "Z": "z",
-    "SH": "ʃ",
-    "ZH": "ʒ",
-    "CH": "tʃ",
-    "JH": "dʒ",
-    "M": "m",
-    "N": "n",
-    "NG": "ŋ",
-    "L": "l",
-    "R": "ɹ",
-    "Y": "j",
-    "W": "w",
-    # Vowels:
-    "IY": "i",
-    "IH": "ɪ",
-    "EY": "e",
-    "EH": "ɛ",
-    "AE": "æ",
-    "AA": "ɑ",
-    "AH": "ə",
-    "AO": "ɔ",
-    "UH": "ʊ",
-    "UW": "u",
-    "ER": "ɝ",
-    "OW": "o",
-    "AY": "aɪ",
-    "AW": "aʊ",
-    "OY": "ɔɪ",
-}
-
 # ----------------- Core: audio → phoneme IDs -----------------
 def audio_to_phoneme_ids(
     wav_16k: np.ndarray, top_k: int = 1
@@ -183,93 +140,19 @@ def decode_ids_to_phones(ids: np.ndarray) -> tuple[list[str], str]:
     return phones, text
 
 
-def decode_multiple_candidates(
-    top_k_ids: list[list[int]],
-    ref_simple: list[str],
-    max_candidates: int = 5,
-) -> list[tuple[list[str], float]]:
-    """
-    Decode nhiều candidate sequence từ top-k và chấm điểm bằng PER.
-
-    Trả về:
-        List[(candidate_simple_sequence, score)] sắp xếp theo score giảm dần.
-    """
-    if not top_k_ids:
-        return []
-
-    T = len(top_k_ids)
-
-    def generate_candidate(choices: list[int]) -> list[str]:
-        """Decode 1 dãy ID → IPA → simple-IPA sequence."""
-        ids_array = np.array(choices)
-        phones, _ = decode_ids_to_phones(ids_array)
-        return ipa_list_to_simple_seq(phones)
-
-    # Candidate 1: greedy (top-1 ở mọi timestep)
-    greedy_choices = [ids[0] for ids in top_k_ids]
-    greedy_seq = generate_candidate(greedy_choices)
-    greedy_score = 1.0 - (sequence_per(ref_simple, greedy_seq) if ref_simple else 1.0)
-    candidates: list[tuple[list[str], float]] = [(greedy_seq, greedy_score)]
-
-    # Candidate 2..n: thử thay top-2 ở vài vị trí đầu để tránh noise
-    if max_candidates > 1:
-        for pos in range(min(T, 3)):
-            if len(top_k_ids[pos]) >= 2:
-                variant_choices = greedy_choices.copy()
-                variant_choices[pos] = top_k_ids[pos][1]
-                variant_seq = generate_candidate(variant_choices)
-                variant_score = 1.0 - (
-                    sequence_per(ref_simple, variant_seq) if ref_simple else 1.0
-                )
-                candidates.append((variant_seq, variant_score))
-
-    # Loại duplicate, sort theo score
-    seen = set()
-    unique_candidates: list[tuple[list[str], float]] = []
-    for seq, score in candidates:
-        seq_tuple = tuple(seq)
-        if seq_tuple not in seen:
-            seen.add(seq_tuple)
-            unique_candidates.append((seq, score))
-
-    unique_candidates.sort(key=lambda x: x[1], reverse=True)
-    return unique_candidates[:max_candidates]
-
-# ----------------- Word → IPA (phonemizer + G2P fallback) -----------------
+# ----------------- Word → IPA (phonemizer) & ARPAbet -----------------
 def _word_to_arpa(word: str) -> list[str]:
     """
     Chuyển 1 từ sang ARPAbet bằng g2p_en.
     """
     arpa_tokens: list[str] = []
-    try:
-        g2p_output = _g2p(word)
-    except Exception as e:
-        logger.error(f"_word_to_arpa: Failed to run G2P for '{word}': {e}")
-        return arpa_tokens
+    g2p_output = _g2p(word)
 
     for s in g2p_output:
         ph_clean = "".join(c for c in s if c.isalpha())
         if ph_clean and ph_clean.isupper():
             arpa_tokens.append(ph_clean)
     return arpa_tokens
-
-
-def _word_to_ipa_with_g2p(word: str) -> list[str]:
-    """
-    Fallback: dùng g2p_en (ARPAbet) rồi map sang IPA.
-    """
-    ipa_seq: list[str] = []
-    arpa_tokens = _word_to_arpa(word)
-
-    for ph in arpa_tokens:
-        ipa = ARPABET_TO_IPA_BASE.get(ph, "")
-        if ipa:
-            ipa_seq.append(ipa)
-        else:
-            logger.debug(
-                f"_word_to_ipa_with_g2p: no IPA mapping for ARPAbet '{ph}'"
-            )
-    return ipa_seq
 
 
 def _phonemize_word(word: str) -> list[str]:
@@ -319,7 +202,7 @@ def words_to_ipa_direct(
     words: list[str],
 ) -> tuple[list[str], list[list[str]], list[str], list[list[str]]]:
     """
-    Word list → IPA (dùng phonemizer trực tiếp, fallback sang G2P nếu cần).
+    Word list → IPA (dùng phonemizer trực tiếp, không fallback).
 
     Trả về:
         phs_ipa           : list IPA phoneme (flat)
@@ -330,7 +213,6 @@ def words_to_ipa_direct(
     logger.debug(f"words_to_ipa_direct (phonemizer): input words={words}")
     phs_ipa: list[str] = []
     per_word_ipa: list[list[str]] = []
-    fallback_used = False
 
     for word in words:
         ipa_tokens: list[str] = []
@@ -338,17 +220,11 @@ def words_to_ipa_direct(
             ipa_tokens = _phonemize_word(word)
         except Exception as e:
             logger.warning(f"words_to_ipa_direct: phonemizer failed for '{word}': {e}")
+            raise
         if not ipa_tokens:
-            fallback_used = True
-            ipa_tokens = _word_to_ipa_with_g2p(word)
+            raise ValueError(f"words_to_ipa_direct: phonemizer returned empty IPA for '{word}'")
         per_word_ipa.append(ipa_tokens)
         phs_ipa.extend(ipa_tokens)
-
-    if fallback_used:
-        logger.warning(
-            "words_to_ipa_direct: Used G2P fallback for some words "
-            "because phonemizer produced empty output."
-        )
 
     ph_ref_simple = ipa_list_to_simple_seq_direct(phs_ipa)
     ph_by_word_simple = [ipa_list_to_simple_seq_direct(seq) for seq in per_word_ipa]
@@ -382,7 +258,7 @@ _ESPEAK_NORMALIZE_MAP = {
     "ts.h": "tʃ",
     "ts": "tʃ",
     # i-variants
-    "i5": "i",
+    "i5": "iː",
 }
 
 
@@ -420,6 +296,7 @@ def _simple_ipa_char(ch: str) -> str:
 def ipa_list_to_simple_seq_direct(ph_ipa_list: list[str]) -> list[str]:
     """
     IPA list → simple-IPA (lấy char "nhóm" đầu tiên sau normalize).
+    Giữ nguyên phoneme dài (có ː) như iː, uː, etc.
     """
     simple: list[str] = []
     for ph in ph_ipa_list:
@@ -428,9 +305,13 @@ def ipa_list_to_simple_seq_direct(ph_ipa_list: list[str]) -> list[str]:
         ph_norm = normalize_espeak_token(ph)
         if not ph_norm:
             continue
-        ch = ph_norm[0]
-        if ch:
-            simple.append(_simple_ipa_char(ch))
+        # Giữ nguyên phoneme dài (có ː) trong simple-IPA
+        if len(ph_norm) > 1 and ph_norm[1] == 'ː':
+            simple.append(ph_norm[:2])  # Giữ nguyên 'iː', 'uː', etc.
+        else:
+            ch = ph_norm[0]
+            if ch:
+                simple.append(_simple_ipa_char(ch))
     return simple
 
 
@@ -448,15 +329,22 @@ def ipa_list_to_simple_seq(ph_pred_list: list[str]) -> list[str]:
                 f"ipa_list_to_simple_seq: [{idx}] '{s}' normalized to empty, skipping"
             )
             continue
-        ch_original = s_norm[0]
-        if ch_original:
-            ch_grouped = _simple_ipa_char(ch_original)
-            if ch_original != ch_grouped:
-                logger.debug(
-                    f"ipa_list_to_simple_seq: [{idx}] '{s}' -> '{s_norm}' "
-                    f"-> '{ch_original}' -> grouped '{ch_grouped}'"
-                )
-            simple.append(ch_grouped)
+        # Giữ nguyên phoneme dài (có ː) trong simple-IPA
+        if len(s_norm) > 1 and s_norm[1] == 'ː':
+            simple.append(s_norm[:2])  # Giữ nguyên 'iː', 'uː', etc.
+            logger.debug(
+                f"ipa_list_to_simple_seq: [{idx}] '{s}' -> '{s_norm}' (long vowel, kept as '{s_norm[:2]}')"
+            )
+        else:
+            ch_original = s_norm[0]
+            if ch_original:
+                ch_grouped = _simple_ipa_char(ch_original)
+                if s != s_norm or ch_original != ch_grouped:
+                    logger.debug(
+                        f"ipa_list_to_simple_seq: [{idx}] '{s}' -> '{s_norm}' "
+                        f"-> '{ch_original}' -> grouped '{ch_grouped}'"
+                    )
+                simple.append(ch_grouped)
     return simple
 
 # ----------------- Weighted phoneme distance / PER -----------------
@@ -498,11 +386,26 @@ CONFUSABLE = {
 }
 
 
+def normalize_ipa_phoneme(ph: str) -> str:
+    """Normalize IPA phoneme (bỏ stress, diacritics) nhưng giữ nguyên cấu trúc."""
+    if not ph:
+        return ""
+    return normalize_espeak_token(ph)
+
+
 def phoneme_sub_cost(a: str, b: str) -> float:
-    """Chi phí thay thế giữa 2 phoneme."""
-    if a == b:
+    """Chi phí thay thế giữa 2 phoneme IPA (sau normalize)."""
+    a_norm = normalize_ipa_phoneme(a)
+    b_norm = normalize_ipa_phoneme(b)
+    
+    if a_norm == b_norm:
         return 0.0
-    if (a, b) in CONFUSABLE:
+    
+    # Lấy ký tự đầu để check CONFUSABLE (vì CONFUSABLE dùng single char)
+    a_char = a_norm[0] if a_norm else ""
+    b_char = b_norm[0] if b_norm else ""
+    
+    if (a_char, b_char) in CONFUSABLE:
         return 0.5  # phát âm gần giống → phạt nửa lỗi
     return 1.0  # khác hẳn
 
@@ -649,7 +552,7 @@ def calculate_fluency(
     Tính độ trôi chảy (fluency) dựa trên:
       - Speech rate (từ/giây)
       - Pause ratio
-      - Rhythm (tỷ lệ số phoneme)
+    (Rhythm không còn được dùng để chấm điểm fluency)
     """
     audio_duration = len(wav_16k) / 16000.0
     if audio_duration <= 0:
@@ -657,7 +560,6 @@ def calculate_fluency(
             "fluency_score": 0.0,
             "speech_rate": 0.0,
             "pause_ratio": 1.0,
-            "rhythm_score": 0.0,
         }
 
     # Speech rate
@@ -725,47 +627,13 @@ def calculate_fluency(
                 0.4, 0.7 * (1.0 - (pause_ratio - acceptable_max) / 0.3)
             )
 
-    # Rhythm: số phoneme pred vs ref
-    if ref_phonemes_per_word is None:
-        _, ref_phonemes_per_word, _, _ = words_to_ipa_direct(words_ref)
-    num_ref_phonemes = sum(len(seq) for seq in ref_phonemes_per_word)
-    num_pred_phonemes = len(ph_pred_list)
-
-    if num_ref_phonemes > 0:
-        phoneme_ratio = num_pred_phonemes / num_ref_phonemes
-        ideal_min, ideal_max = 0.7, 1.4
-        acceptable_min, acceptable_max = 0.5, 1.8
-
-        if ideal_min <= phoneme_ratio <= ideal_max:
-            rhythm_score = 1.0
-        elif acceptable_min <= phoneme_ratio < ideal_min:
-            rhythm_score = 0.7 + (
-                (phoneme_ratio - acceptable_min) / (ideal_min - acceptable_min)
-            ) * 0.3
-        elif ideal_max < phoneme_ratio <= acceptable_max:
-            rhythm_score = 1.0 - (
-                (phoneme_ratio - ideal_max) / (acceptable_max - ideal_max)
-            ) * 0.3
-        else:
-            if phoneme_ratio < acceptable_min:
-                rhythm_score = max(0.4, 0.7 * (phoneme_ratio / acceptable_min))
-            else:
-                rhythm_score = max(
-                    0.4,
-                    0.7 * (1.0 - (phoneme_ratio - acceptable_max) / acceptable_max),
-                )
-    else:
-        rhythm_score = 0.0
-
-    fluency_score = (
-        speech_rate_score * 0.3 + pause_score * 0.3 + rhythm_score * 0.4
-    ) * 100.0
+    # Fluency chỉ dựa trên speech rate + pause ratio
+    fluency_score = (speech_rate_score * 0.5 + pause_score * 0.5) * 100.0
 
     return {
         "fluency_score": fluency_score,
         "speech_rate": speech_rate,
         "pause_ratio": pause_ratio,
-        "rhythm_score": rhythm_score * 100.0,
     }
 
 # ----------------- Main API -----------------
@@ -796,7 +664,7 @@ def assess_pronunciation(wav_16k: np.ndarray, words_ref: list[str]) -> dict:
 
     # Step 2: Audio → phoneme IDs → IPA
     logger.info("-" * 60)
-    logger.info("Step 2: Processing audio with Wav2Vec2 model")
+    logger.info("Step 2: Decoding audio to IPA phonemes (Wav2Vec2)")
     ids, _, top_k_ids = audio_to_phoneme_ids(wav_16k, top_k=3)
 
     ph_pred_list, ph_pred_text = decode_ids_to_phones(ids)
@@ -807,35 +675,19 @@ def assess_pronunciation(wav_16k: np.ndarray, words_ref: list[str]) -> dict:
     logger.debug(
         f"  → Predicted text: '{ph_pred_text[:200]}{'...' if len(ph_pred_text) > 200 else ''}'"
     )
-
-    # Step 3: decode nhiều candidate, chọn best theo PER
+    
+    # Step 3: Normalize predicted IPA phonemes
     logger.info("-" * 60)
-    logger.info("Step 3: Evaluating candidate sequences")
-    candidates = decode_multiple_candidates(top_k_ids, ref_simple, max_candidates=5)
-
-    if candidates:
-        logger.info(f"  → Generated {len(candidates)} candidate sequences:")
-        for idx, (cand_seq, cand_score) in enumerate(candidates):
-            logger.info(f"    Candidate #{idx+1}:")
-            logger.info(f"      Score: {cand_score:.3f}")
-            logger.info(f"      Length: {len(cand_seq)}")
-            logger.info(
-                f"      Sequence: {cand_seq[:50]}{'...' if len(cand_seq) > 50 else ''}"
-            )
-            if idx == 0:
-                logger.info("      Status: ✅ Best candidate")
-
-        best_seq, best_score = candidates[0]
-        logger.info(f"  ✅ Selected best candidate: score={best_score:.3f}")
-        pred_simple = best_seq
-    else:
-        logger.warning("  ⚠️ No candidates generated, using greedy fallback")
-        pred_simple = ipa_list_to_simple_seq(ph_pred_list)
-
+    logger.info("Step 3: Normalizing predicted IPA phonemes")
+    ph_pred_normalized = [normalize_espeak_token(ph) for ph in ph_pred_list if ph]
+    ph_pred_normalized = [ph for ph in ph_pred_normalized if ph]  # Bỏ các phoneme rỗng sau normalize
     logger.info(
-        f"  → Final predicted simple sequence (length {len(pred_simple)}): "
-        f"{pred_simple[:50]}{'...' if len(pred_simple) > 50 else ''}"
+        f"  → Normalized IPA phonemes ({len(ph_pred_normalized)}): "
+        f"{ph_pred_normalized[:30]}{'...' if len(ph_pred_normalized) > 30 else ''}"
     )
+    
+    # Convert sang simple-IPA
+    pred_simple = ipa_list_to_simple_seq(ph_pred_list)
 
     # Phoneme correctness cho UI (dùng simple-IPA per word)
     flat_simple_ref: list[str] = []
@@ -854,6 +706,8 @@ def assess_pronunciation(wav_16k: np.ndarray, words_ref: list[str]) -> dict:
     # Step 4: PER / Accuracy
     logger.info("-" * 60)
     logger.info("Step 4: Calculating phoneme accuracy (PER)")
+    logger.info(f"  → Reference simple-IPA ({len(ref_simple)}): {ref_simple}")
+    logger.info(f"  → Predicted simple-IPA ({len(pred_simple)}): {pred_simple}")
     per = sequence_per(ref_simple, pred_simple)
     accuracy_ph = (1 - per) * 100.0
     logger.info(f"  → Phoneme Error Rate (PER): {per:.3f}")
@@ -886,7 +740,6 @@ def assess_pronunciation(wav_16k: np.ndarray, words_ref: list[str]) -> dict:
         f"  → Speech rate: {fluency_metrics['speech_rate']:.2f} words/second"
     )
     logger.info(f"  → Pause ratio: {fluency_metrics['pause_ratio']:.2%}")
-    logger.info(f"  → Rhythm score: {fluency_metrics['rhythm_score']:.1f}%")
     logger.info(f"  → Fluency score: {fluency_metrics['fluency_score']:.1f}%")
 
     logger.info("=" * 60)
@@ -902,7 +755,6 @@ def assess_pronunciation(wav_16k: np.ndarray, words_ref: list[str]) -> dict:
         "fluency": fluency_metrics["fluency_score"],
         "speech_rate": fluency_metrics["speech_rate"],
         "pause_ratio": fluency_metrics["pause_ratio"],
-        "rhythm_score": fluency_metrics["rhythm_score"],
         "ph_ref_flat": ph_ref_simple_from_words,
         "ph_by_word_simple": ph_by_word_simple,
         "ph_by_word_arpa": ph_by_word_arpa,

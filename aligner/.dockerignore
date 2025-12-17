@@ -16,5 +16,6 @@ build
 .venv
 venv
 env
+phoneme_model
 
 

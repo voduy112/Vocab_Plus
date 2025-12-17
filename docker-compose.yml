@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # Node.js API Service
   api:
@@ -38,7 +36,8 @@ services:
       # Mount code để thay đổi code không cần rebuild
       # Exclude phoneme_model folder để không ghi đè model đã tải
       - ./aligner:/app
-      - /app/phoneme_model # Anonymous volume để bảo vệ model folder
+      # Anonymous volume để bảo vệ model folder và ngăn mount từ host
+      - /app/phoneme_model
     networks:
       - vocab-plus-network
     restart: unless-stopped
