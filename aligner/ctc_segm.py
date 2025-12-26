@@ -7,7 +7,6 @@ import torch
 import torch.nn.functional as F
 
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
-from g2p_en import G2p
 from phonemizer import phonemize
 from phonemizer.separator import Separator
 
@@ -88,12 +87,11 @@ except Exception as e:
     logger.error("Make sure the model was downloaded and copied to Docker image")
     raise
 
-logger.info("Loading G2p (ARPAbet) and phonemizer backend...")
-_g2p = G2p()
+logger.info("Loading phonemizer backend...")
 _PHONEMIZER_LANGUAGE = os.getenv("PHONEMIZER_LANGUAGE", "en-us")
 _PHONEMIZER_BACKEND = os.getenv("PHONEMIZER_BACKEND", "espeak")
 _PHONEMIZER_SEPARATOR = Separator(phone=" ", syllable="", word="")
-logger.info("All models (ASR phoneme + G2P + phonemizer) loaded successfully")
+logger.info("All models (ASR phoneme + phonemizer) loaded successfully")
 
 # ----------------- Core: audio → phoneme IDs -----------------
 def audio_to_phoneme_ids(
@@ -140,21 +138,7 @@ def decode_ids_to_phones(ids: np.ndarray) -> tuple[list[str], str]:
     return phones, text
 
 
-# ----------------- Word → IPA (phonemizer) & ARPAbet -----------------
-def _word_to_arpa(word: str) -> list[str]:
-    """
-    Chuyển 1 từ sang ARPAbet bằng g2p_en.
-    """
-    arpa_tokens: list[str] = []
-    g2p_output = _g2p(word)
-
-    for s in g2p_output:
-        ph_clean = "".join(c for c in s if c.isalpha())
-        if ph_clean and ph_clean.isupper():
-            arpa_tokens.append(ph_clean)
-    return arpa_tokens
-
-
+# ----------------- Word → IPA (phonemizer) -----------------
 def _phonemize_word(word: str) -> list[str]:
     """
     Phonemizer/espeak → IPA tokens cho 1 từ.
@@ -173,29 +157,6 @@ def _phonemize_word(word: str) -> list[str]:
     )
     tokens = [tok.strip() for tok in ipa_string.replace("|", " ").split() if tok.strip()]
     return tokens
-
-
-def words_to_phonemes(
-    words: list[str],
-) -> tuple[list[str], list[list[str]]]:
-    """
-    Word list → ARPAbet phonemes (G2P).
-
-    Returns:
-        phs_arpa      : flat list of ARPAbet phonemes
-        per_word_arpa : list[list[str]] per word
-    """
-    logger.debug(f"words_to_phonemes (G2P): input words={words}")
-    phs_arpa: list[str] = []
-    per_word_arpa: list[list[str]] = []
-    for word in words:
-        arpa_tokens = _word_to_arpa(word)
-        per_word_arpa.append(arpa_tokens)
-        phs_arpa.extend(arpa_tokens)
-    logger.debug(
-        f"words_to_phonemes: total ARPAbet phonemes={len(phs_arpa)}, per_word={per_word_arpa}"
-    )
-    return phs_arpa, per_word_arpa
 
 
 def words_to_ipa_direct(
@@ -367,6 +328,25 @@ CONFUSABLE = {
     ("ʊ", "u"),
     ("o", "ɔ"),
     ("ɔ", "o"),
+    # Front vowels gần nhau
+    ("æ", "ɛ"),
+    ("ɛ", "æ"),
+    ("æ", "e"),
+    ("e", "æ"),
+    ("ɛ", "e"),
+    ("e", "ɛ"),
+    # Central vowels và open vowels (common confusion)
+    ("ʌ", "a"),
+    ("a", "ʌ"),
+    ("ʌ", "ɑ"),
+    ("ɑ", "ʌ"),
+    # R-colored vowels vs central vowels
+    ("ɝ", "ʌ"),
+    ("ʌ", "ɝ"),
+    ("ɝ", "ə"),
+    ("ə", "ɝ"),
+    ("ɚ", "ʌ"),
+    ("ʌ", "ɚ"),
     # Fricative
     ("s", "ʃ"),
     ("ʃ", "s"),
@@ -383,6 +363,11 @@ CONFUSABLE = {
     # Voicing pairs
     ("t", "d"),
     ("d", "t"),
+    # Dental fricatives vs stops (common L2 error)
+    ("ð", "d"),
+    ("d", "ð"),
+    ("θ", "t"),
+    ("t", "θ"),
 }
 
 
@@ -401,12 +386,16 @@ def phoneme_sub_cost(a: str, b: str) -> float:
     if a_norm == b_norm:
         return 0.0
     
-    # Lấy ký tự đầu để check CONFUSABLE (vì CONFUSABLE dùng single char)
-    a_char = a_norm[0] if a_norm else ""
-    b_char = b_norm[0] if b_norm else ""
+    # Lấy base character (ký tự đầu) để check CONFUSABLE
+    # Với long vowels (có ː), vẫn lấy ký tự đầu (ví dụ: 'aː' → 'a')
+    a_base = a_norm[0] if a_norm else ""
+    b_base = b_norm[0] if b_norm else ""
     
-    if (a_char, b_char) in CONFUSABLE:
+    # Check CONFUSABLE với base characters
+    if (a_base, b_base) in CONFUSABLE:
+        logger.debug(f"phoneme_sub_cost: '{a}' -> '{b}' (confusable: cost=0.5)")
         return 0.5  # phát âm gần giống → phạt nửa lỗi
+    logger.debug(f"phoneme_sub_cost: '{a}' -> '{b}' (not confusable: cost=1.0)")
     return 1.0  # khác hẳn
 
 
@@ -552,7 +541,6 @@ def calculate_fluency(
     Tính độ trôi chảy (fluency) dựa trên:
       - Speech rate (từ/giây)
       - Pause ratio
-    (Rhythm không còn được dùng để chấm điểm fluency)
     """
     audio_duration = len(wav_16k) / 16000.0
     if audio_duration <= 0:
@@ -567,7 +555,7 @@ def calculate_fluency(
     speech_rate = num_words / audio_duration if audio_duration > 0 else 0.0
 
     ideal_min, ideal_max = 2.0, 4.0
-    acceptable_min, acceptable_max = 1.2, 5.5
+    acceptable_min, acceptable_max = 0.7, 5.5
 
     if ideal_min <= speech_rate <= ideal_max:
         speech_rate_score = 1.0
@@ -652,7 +640,6 @@ def assess_pronunciation(wav_16k: np.ndarray, words_ref: list[str]) -> dict:
     ph_ref_ipa, per_word_ipa, ph_ref_simple_from_words, ph_by_word_simple = (
         words_to_ipa_direct(words_ref)
     )
-    _, ph_by_word_arpa = words_to_phonemes(words_ref)
     logger.info(
         f"  → Reference IPA phonemes ({len(ph_ref_ipa)}): "
         f"{ph_ref_ipa[:30]}{'...' if len(ph_ref_ipa) > 30 else ''}"
@@ -757,7 +744,7 @@ def assess_pronunciation(wav_16k: np.ndarray, words_ref: list[str]) -> dict:
         "pause_ratio": fluency_metrics["pause_ratio"],
         "ph_ref_flat": ph_ref_simple_from_words,
         "ph_by_word_simple": ph_by_word_simple,
-        "ph_by_word_arpa": ph_by_word_arpa,
+        "ph_by_word_arpa": [],  # Empty list since G2P is removed
         "phoneme_correctness": phoneme_correctness_by_word,
         "per_word_ipa": per_word_ipa,
         "ph_by_word_ipa": per_word_ipa,

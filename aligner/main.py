@@ -4,8 +4,8 @@ Pronunciation Assessment API
 Cách so sánh Text và Audio để chấm điểm:
 
 1. TEXT → PHONEMES (Expected):
-   - Dùng G2P (Grapheme-to-Phoneme) để chuyển text thành phonemes mong đợi
-   - Ví dụ: "beautiful" → ["B", "IY", "UW", "T", "AH", "F", "AH", "L"]
+   - Dùng phonemizer/espeak để chuyển text thành IPA phonemes mong đợi
+   - Ví dụ: "beautiful" → ["b", "j", "uː", "t", "ɪ", "f", "ə", "l"]
 
 2. AUDIO → ALIGNMENT & SCORES:
    - Dùng Wav2Vec2-CTC để align audio với text reference
@@ -34,7 +34,7 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 import io, numpy as np, soundfile as sf, re
 import logging
-from ctc_segm import assess_pronunciation, words_to_phonemes, word_covered, ipa_list_to_simple_seq
+from ctc_segm import assess_pronunciation, word_covered, ipa_list_to_simple_seq
 
 # Setup logging
 logging.basicConfig(
@@ -121,9 +121,9 @@ async def align(
             )
 
         # ===== Phoneme sequence assessment =====
-        # Cách mới: So sánh ARPAbet (từ G2P) vs IPA (từ model) bằng edit distance
+        # So sánh IPA reference (từ phonemizer) vs IPA predicted (từ model) bằng edit distance
         logger.info("Starting phoneme sequence assessment...")
-        logger.info("  Process: Audio → IPA phonemes → Compare with ARPAbet (G2P) → Scores")
+        logger.info("  Process: Audio → IPA phonemes → Compare with IPA reference → Scores")
         
         result = assess_pronunciation(mono, words_ref)
         
@@ -132,12 +132,18 @@ async def align(
         fluency = result["fluency"]  # Sử dụng fluency từ calculate_fluency()
         speech_rate = result.get("speech_rate", 0.0)
         pause_ratio = result.get("pause_ratio", 0.0)
-        rhythm_score = result.get("rhythm_score", 0.0)
         
         duration_ms = int(round(mono.size / 16000.0 * 1000))
         
-        logger.info(f"Assessment results: accuracy={accuracy_ph:.1f}%, completeness={completeness:.1f}%, "
-                   f"fluency={fluency:.1f}% (speech_rate={speech_rate:.2f} wps, pause={pause_ratio:.2%}, rhythm={rhythm_score:.1f}%)")
+        logger.info(
+            "Assessment results: accuracy=%.1f%%, completeness=%.1f%%, "
+            "fluency=%.1f%% (speech_rate=%.2f wps, pause=%.2f%%)",
+            accuracy_ph,
+            completeness,
+            fluency,
+            speech_rate,
+            pause_ratio * 100,
+        )
 
         # Overall score: weighted combination
         overall = 0.4 * accuracy_ph + 0.4 * fluency + 0.2 * completeness
@@ -146,12 +152,11 @@ async def align(
         # Build words response (simplified - no timings)
         words_response = []
         ph_ref_flat = result["ph_ref_flat"]
-        # Sử dụng IPA thay vì ARPABET
+        # Sử dụng IPA
         ph_by_word = result.get("ph_by_word_ipa")
         if not ph_by_word:
-            # Fallback: nếu không có IPA, dùng ARPABET nhưng log warning
-            logger.warning("ph_by_word_ipa not found, falling back to ARPABET")
-            _, ph_by_word = words_to_phonemes(words_ref)
+            logger.error("ph_by_word_ipa not found in result")
+            ph_by_word = []
         phoneme_correctness = result.get("phoneme_correctness") or []
         
         # Tính word scores dựa trên phoneme coverage

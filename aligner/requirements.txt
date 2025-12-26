@@ -10,7 +10,6 @@ ctc-segmentation==1.7.4
 fastapi
 uvicorn[standard]
 soundfile
-g2p_en
 faster-whisper
 python-multipart
 phonemizer
