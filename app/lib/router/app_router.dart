@@ -11,7 +11,6 @@ import '../../data/dictionary/models.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/widgets/tab_page_view.dart';
 import '../../core/widgets/custom_bottom_nav.dart';
-import '../../core/widgets/ai_chat_button.dart';
 import '../../core/models/deck.dart';
 import '../../core/models/vocabulary.dart';
 import '../../features/pronunciation/views/select_deck_screen.dart';
@@ -60,7 +59,6 @@ GoRouter createRouter(AuthController auth) {
                     },
                   ),
                 ),
-                // const AiChatButton(),
               ],
             ),
           );

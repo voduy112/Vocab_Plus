@@ -230,23 +230,59 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   // form đã tách ra VocabularyFormCard
 
   Future<void> _saveVocabulary() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Kiểm tra form state
+    if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Kiểm tra deck có ID không
+    if (widget.deck.id == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi: Deck chưa có ID. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Kiểm tra front và back không rỗng
+    final frontText = _frontController.text.trim();
+    final backText = _backController.text.trim();
+
+    if (frontText.isEmpty || backText.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi: Vui lòng nhập đầy đủ thông tin từ vựng.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
       final nowUtc = DateTime.now().toUtc();
 
+      // Đảm bảo vocabulary không null khi editing
+      final editingVocab =
+          _isEditing && widget.vocabulary != null ? widget.vocabulary! : null;
+
       final vocabulary = Vocabulary(
-        id: _isEditing ? widget.vocabulary!.id : null,
+        id: editingVocab?.id,
         deskId: widget.deck.id!,
-        front: _frontController.text.trim(),
-        back: _backController.text.trim(),
-        masteryLevel: _isEditing ? widget.vocabulary!.masteryLevel : 0,
-        reviewCount: _isEditing ? widget.vocabulary!.reviewCount : 0,
-        lastReviewed: _isEditing ? widget.vocabulary!.lastReviewed : null,
-        nextReview: _isEditing ? widget.vocabulary!.nextReview : null,
-        createdAt: _isEditing ? widget.vocabulary!.createdAt : nowUtc,
+        front: frontText,
+        back: backText,
+        masteryLevel: editingVocab?.masteryLevel ?? 0,
+        reviewCount: editingVocab?.reviewCount ?? 0,
+        lastReviewed: editingVocab?.lastReviewed,
+        nextReview: editingVocab?.nextReview,
+        createdAt: editingVocab?.createdAt ?? nowUtc,
         updatedAt: nowUtc,
         cardType: _selectedCardType,
         frontImageUrl: _frontImageUrl,
@@ -284,7 +320,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
 
           final reversedVocabulary = Vocabulary(
             id: null,
-            deskId: widget.deck.id!,
+            deskId: widget.deck.id!, // Đã kiểm tra null ở trên
             front: _backController.text.trim(),
             back: _frontController.text.trim(),
             masteryLevel: 0,
@@ -335,14 +371,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
         context.pop(true); // Trả về true để báo hiệu đã thêm/sửa thành công
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      print('Error: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -351,6 +380,17 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   }
 
   void _showPreviewDialog() {
+    // Kiểm tra deck có ID không
+    if (widget.deck.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lỗi: Deck chưa có ID. Không thể xem trước.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final now = DateTime.now().toUtc();
     final tempVocab = Vocabulary(
       id: null,

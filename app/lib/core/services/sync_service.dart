@@ -63,7 +63,6 @@ class SyncService {
               await txn.insert('decks', {
                 'id': cloudDeck['id'],
                 'name': cloudDeck['name'],
-                'color': cloudDeck['color'] ?? '#2196F3',
                 'created_at': cloudDeck['created_at'],
                 'updated_at': cloudDeck['updated_at'],
                 'is_active': cloudDeck['is_active'] ?? 1,
@@ -80,7 +79,6 @@ class SyncService {
                   'decks',
                   {
                     'name': cloudDeck['name'],
-                    'color': cloudDeck['color'] ?? '#2196F3',
                     'updated_at': cloudDeck['updated_at'],
                     'is_active': cloudDeck['is_active'] ?? 1,
                     'is_favorite': cloudDeck['is_favorite'] ?? 0,

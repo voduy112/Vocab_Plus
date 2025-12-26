@@ -49,7 +49,7 @@ class FeaturedCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                'Overview',
+                'Tổng quan',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -64,7 +64,7 @@ class FeaturedCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.book,
-                  label: 'Total Words',
+                  label: 'Tổng từ',
                   value: totalWords.toString(),
                   color: Colors.white70,
                 ),
@@ -72,7 +72,7 @@ class FeaturedCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.check_circle,
-                  label: 'Learned',
+                  label: 'Đã học',
                   value: totalLearned.toString(),
                   color: Colors.green[200]!,
                 ),
@@ -85,7 +85,7 @@ class FeaturedCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.new_releases,
-                  label: 'New Words',
+                  label: 'Từ mới',
                   value: totalNewWords.toString(),
                   color: Colors.blue[200]!,
                 ),
@@ -93,7 +93,7 @@ class FeaturedCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.schedule,
-                  label: 'Need Review',
+                  label: 'Cần ôn',
                   value: totalDue.toString(),
                   color: Colors.orange[200]!,
                 ),

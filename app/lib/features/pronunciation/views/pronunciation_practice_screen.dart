@@ -78,7 +78,7 @@ class _PronunciationPracticeScreenState
     super.initState();
     const apiBaseUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://192.168.2.167:3000',
+      defaultValue: 'http://172.20.10.2:3000',
     );
     final apiClient = ApiClient(apiBaseUrl);
     _pronunciationService = PronunciationService(apiClient);
@@ -594,7 +594,10 @@ class _PronunciationPracticeScreenState
       if (mounted) {
         setState(() => _isEvaluating = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi đánh giá: $e')),
+          const SnackBar(
+            content: Text('Bạn chưa nói gì cả. Vui lòng thử lại.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

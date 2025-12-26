@@ -70,7 +70,7 @@ class _DeckRowState extends State<DeckRow> with SingleTickerProviderStateMixin {
                       ),
                       const SizedBox(height: 1),
                       Text(
-                        '$total words',
+                        '$total từ',
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 11,

@@ -34,8 +34,10 @@ class VocabularyRepository {
           : vocabulary.backExtra!.entries
               .map((e) => '${e.key}=${e.value}')
               .join('||'),
-      'created_at': _toUtcIso(vocabulary.createdAt),
-      'updated_at': _toUtcIso(vocabulary.updatedAt),
+      'created_at': _toUtcIso(vocabulary.createdAt) ??
+          vocabulary.createdAt.toUtc().toIso8601String(),
+      'updated_at': _toUtcIso(vocabulary.updatedAt) ??
+          vocabulary.updatedAt.toUtc().toIso8601String(),
       'is_active': vocabulary.isActive ? 1 : 0,
       'card_type': vocabulary.cardType.toString().split('.').last,
     });

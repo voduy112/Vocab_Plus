@@ -46,41 +46,49 @@ Future<void> showVocabularyPreviewDialog({
 
   await showDialog(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Row(
-        children: [
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: accent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              cardType == CardType.basis
-                  ? 'Basis'
-                  : cardType == CardType.reverse
-                      ? 'Reverse'
-                      : 'Typing',
-              style: TextStyle(
-                color: accent,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+    builder: (ctx) => LayoutBuilder(
+      builder: (context, constraints) {
+        // Giới hạn width tối đa và đảm bảo width finite
+        final maxDialogWidth =
+            constraints.maxWidth > 700 ? 700.0 : constraints.maxWidth * 0.9;
+
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  cardType == CardType.basis
+                      ? 'Basis'
+                      : cardType == CardType.reverse
+                          ? 'Reverse'
+                          : 'Typing',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 700),
-        child: sessionWidget,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Đóng'),
-        ),
-      ],
+          content: SizedBox(
+            width: maxDialogWidth,
+            child: sessionWidget,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Đóng'),
+            ),
+          ],
+        );
+      },
     ),
   );
 }

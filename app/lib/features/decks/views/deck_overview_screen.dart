@@ -35,12 +35,6 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
   late Deck _currentDeck;
   Key _heatmapKey = UniqueKey();
 
-  // Learning metrics
-  int _dailyAverage = 0;
-  double _daysLearnedPercent = 0.0;
-  int _longestStreak = 0;
-  int _currentStreak = 0;
-
   @override
   void initState() {
     super.initState();
@@ -77,17 +71,11 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
           await vocabRepo.countMinuteLearning(_currentDeck.id!);
       final newCount = await vocabRepo.countNewVocabularies(_currentDeck.id!);
 
-      final learningMetrics = await _calculateLearningMetrics();
-
       if (mounted) {
         setState(() {
           _deckStats = stats;
           _minuteLearningCount = minuteLearning;
           _newCount = newCount;
-          _dailyAverage = learningMetrics['dailyAverage'] ?? 0;
-          _daysLearnedPercent = learningMetrics['daysLearnedPercent'] ?? 0.0;
-          _longestStreak = learningMetrics['longestStreak'] ?? 0;
-          _currentStreak = learningMetrics['currentStreak'] ?? 0;
           _isLoading = false;
         });
       }
@@ -99,15 +87,6 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
         );
       }
     }
-  }
-
-  Future<Map<String, dynamic>> _calculateLearningMetrics() async {
-    return {
-      'dailyAverage': 4,
-      'daysLearnedPercent': 10.0,
-      'longestStreak': 3,
-      'currentStreak': 0,
-    };
   }
 
   Future<void> _startStudySession() async {
@@ -178,8 +157,6 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
                     _buildStudyNowButton(),
                     const SizedBox(height: 24),
                     _buildHeatmap(start, end),
-                    const SizedBox(height: 24),
-                    _buildLearningMetrics(),
                   ]),
                 ),
               ),
@@ -322,90 +299,6 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
       start: start,
       end: end,
       deckId: widget.deck.id,
-    );
-  }
-
-  Widget _buildLearningMetrics() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Thống kê học tập',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetricItem(
-                  'Daily average',
-                  '$_dailyAverage cards',
-                  Colors.green,
-                ),
-              ),
-              Expanded(
-                child: _buildMetricItem(
-                  'Days learned',
-                  '${_daysLearnedPercent.toStringAsFixed(0)}%',
-                  Colors.orange,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetricItem(
-                  'Longest streak',
-                  '$_longestStreak days',
-                  Colors.green,
-                ),
-              ),
-              Expanded(
-                child: _buildMetricItem(
-                  'Current streak',
-                  '$_currentStreak day',
-                  Colors.grey,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricItem(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-      ],
     );
   }
 }

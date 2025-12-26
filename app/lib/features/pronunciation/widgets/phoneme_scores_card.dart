@@ -2,6 +2,73 @@ import 'package:flutter/material.dart';
 
 import '../../../core/models/pronunciation_result.dart';
 
+/// Map chuyển đổi ARPAbet sang IPA (International Phonetic Alphabet)
+const Map<String, String> _arpaToIpaMap = {
+  // Vowels
+  'AA': 'ɑ', // father
+  'AE': 'æ', // cat
+  'AH': 'ʌ', // but
+  'AO': 'ɔ', // law
+  'AW': 'aʊ', // cow
+  'AY': 'aɪ', // buy
+  'EH': 'ɛ', // bed
+  'ER': 'ɝ', // bird
+  'EY': 'eɪ', // bait
+  'IH': 'ɪ', // bit
+  'IY': 'i', // beat
+  'OW': 'oʊ', // boat
+  'OY': 'ɔɪ', // boy
+  'UH': 'ʊ', // book
+  'UW': 'u', // boot
+  'AH0': 'ə', // about (schwa, unstressed)
+  'AH1': 'ʌ', // but (stressed)
+  'AH2': 'ə', // about (schwa, secondary stress)
+
+  // Consonants
+  'B': 'b', // bat
+  'CH': 'tʃ', // chair
+  'D': 'd', // dog
+  'DH': 'ð', // this
+  'F': 'f', // fan
+  'G': 'ɡ', // go
+  'HH': 'h', // hat
+  'JH': 'dʒ', // joy
+  'K': 'k', // cat
+  'L': 'l', // leg
+  'M': 'm', // man
+  'N': 'n', // no
+  'NG': 'ŋ', // sing
+  'P': 'p', // pen
+  'R': 'ɹ', // red
+  'S': 's', // sun
+  'SH': 'ʃ', // ship
+  'T': 't', // top
+  'TH': 'θ', // think
+  'V': 'v', // van
+  'W': 'w', // wet
+  'Y': 'j', // yes
+  'Z': 'z', // zoo
+  'ZH': 'ʒ', // measure
+};
+
+/// Chuyển đổi ARPAbet phoneme sang IPA
+/// Nếu đã là IPA thì giữ nguyên
+String _convertToIpa(String phoneme) {
+  if (phoneme.isEmpty) return phoneme;
+
+  // Nếu đã là IPA (chứa ký tự IPA đặc biệt), giữ nguyên
+  // Kiểm tra xem có chứa ký tự IPA không
+  final ipaChars = RegExp(r'[ɑæʌɔɛɝɪʊuəðθʃʒŋɹ]');
+  if (ipaChars.hasMatch(phoneme)) {
+    return phoneme; // Đã là IPA
+  }
+
+  // Chuyển đổi ARPAbet sang IPA
+  final upperPhoneme = phoneme.toUpperCase();
+  return _arpaToIpaMap[upperPhoneme] ??
+      phoneme; // Nếu không tìm thấy, giữ nguyên
+}
+
 class PhonemeScoresCard extends StatelessWidget {
   final PronunciationResult result;
   final int currentExerciseIndex;
@@ -111,10 +178,13 @@ class PhonemeScoresCard extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment:
+            CrossAxisAlignment.end, // Align bottom để underline thẳng hàng
         children: [
           for (int i = 0; i < wordPhonemes.length; i++) ...[
             _buildPhonemeWithUnderline(wordPhonemes[i]),
-            if (i != wordPhonemes.length - 1) const SizedBox(width: 4),
+            if (i != wordPhonemes.length - 1)
+              const SizedBox(width: 6), // Tăng khoảng cách giữa các phoneme
           ],
         ],
       ),
@@ -138,23 +208,37 @@ class PhonemeScoresCard extends StatelessWidget {
       underlineColor = Colors.green;
     }
 
+    // Font size và style tối ưu cho IPA
+    const double fontSize = 20.0;
+    const FontWeight fontWeight =
+        FontWeight.w500; // Giảm weight để IPA hiển thị rõ hơn
+
+    // Chuyển đổi phoneme sang IPA trước khi hiển thị
+    final ipaPhoneme = _convertToIpa(phoneme.p);
+
     return Stack(
       alignment: Alignment.bottomLeft,
       children: [
         Text(
-          phoneme.p,
+          ipaPhoneme,
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontSize: fontSize,
+            fontWeight: fontWeight,
             color: textColor,
+            fontFeatures: const [
+              // Đảm bảo hỗ trợ Unicode/IPA tốt
+            ],
+            letterSpacing: 0.5, // Tăng khoảng cách giữa các ký tự để IPA rõ hơn
+            height: 1.2, // Line height để không bị cắt
           ),
+          textAlign: TextAlign.left,
         ),
         Positioned(
           bottom: -3,
           left: 0,
           child: Container(
             height: 2.5,
-            width: _getTextWidth(phoneme.p, 18, FontWeight.w600),
+            width: _getTextWidth(ipaPhoneme, fontSize, fontWeight),
             color: underlineColor,
           ),
         ),
@@ -170,6 +254,8 @@ class PhonemeScoresCard extends StatelessWidget {
         style: TextStyle(
           fontSize: fontSize,
           fontWeight: fontWeight,
+          letterSpacing:
+              0.5, // Match với style trong _buildPhonemeWithUnderline
         ),
       ),
       textDirection: TextDirection.ltr,
