@@ -1,3 +1,6 @@
+# Ignore heavy dictionary assets (JSONL and images)
+lib/core/assets/dictionary/
+!lib/core/assets/dictionary/.gitkeep
 # Miscellaneous
 *.class
 *.log
@@ -115,3 +118,4 @@ app/android/app/src/main/res/values-v31/
 
 # Core assets (if auto-generated)
 app/lib/core/assets/
+app/lib/core/assets/dictionary/
